@@ -1,0 +1,2753 @@
+openapi: 3.0.3
+info:
+  title: Sulekha Engineering Backend API
+  description: API specification for the Sulekha Engineering backend services.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: Default API server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^[0-9a-fA-F]{24}$'
+      description: MongoDB ObjectId string
+    UsageIdParam:
+      name: usageId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^[0-9a-fA-F]{24}$'
+      description: MongoDB ObjectId for material usage record
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        statusCode:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Success
+        data:
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+    ApiPaginatedResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            pagination:
+              type: object
+              properties:
+                page:
+                  type: integer
+                  example: 1
+                limit:
+                  type: integer
+                  example: 20
+                total:
+                  type: integer
+                  example: 100
+                pages:
+                  type: integer
+                  example: 5
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 6481a2d5b6b9a8c7e4d01234
+        name:
+          type: string
+          example: Mohit Sharma
+        email:
+          type: string
+          format: email
+          example: mohit@example.com
+        role:
+          type: string
+          enum: [admin, manager, warehouse_staff, installation_team, viewer]
+        permissions:
+          type: array
+          items:
+            type: string
+          example: [view_customer, edit_material]
+        phone:
+          type: string
+          example: '9876543210'
+        department:
+          type: string
+          example: Operations
+        status:
+          type: string
+          example: active
+        lastLogin:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TokenPair:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        phone:
+          type: string
+          pattern: '^[0-9]{10}$'
+        role:
+          type: string
+          enum: [admin, manager, warehouse_staff, installation_team, viewer]
+        department:
+          type: string
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword, confirmPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+        confirmPassword:
+          type: string
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    ResetPasswordRequest:
+      type: object
+      required: [token, newPassword, confirmPassword]
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+        confirmPassword:
+          type: string
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+        customerId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        alternatePhone:
+          type: string
+        email:
+          type: string
+          format: email
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        pincode:
+          type: string
+        systemSizeKW:
+          type: number
+        roofType:
+          type: string
+          enum: [rcc_rooftop, tin_shed, ground_mount]
+        roofArea:
+          type: number
+        gstNumber:
+          type: string
+        panNumber:
+          type: string
+        preferredInstallationDate:
+          type: string
+          format: date
+        preferredTimeSlot:
+          type: string
+          enum: [morning, afternoon, evening, anytime]
+        status:
+          type: string
+        notes:
+          type: string
+        referredBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+    CreateCustomerRequest:
+      type: object
+      required: [name, phone, address, city, state, pincode, systemSizeKW, roofType]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        phone:
+          type: string
+          pattern: '^[0-9]{10}$'
+        alternatePhone:
+          type: string
+          pattern: '^[0-9]{10}$'
+        email:
+          type: string
+          format: email
+        address:
+          type: string
+          maxLength: 500
+        city:
+          type: string
+        state:
+          type: string
+        pincode:
+          type: string
+          pattern: '^[0-9]{6}$'
+        systemSizeKW:
+          type: number
+          minimum: 0.1
+        roofType:
+          type: string
+          enum: [rcc_rooftop, tin_shed, ground_mount]
+        roofArea:
+          type: number
+          minimum: 0
+        gstNumber:
+          type: string
+        panNumber:
+          type: string
+        preferredInstallationDate:
+          type: string
+          format: date
+        preferredTimeSlot:
+          type: string
+          enum: [morning, afternoon, evening, anytime]
+        notes:
+          type: string
+          maxLength: 1000
+        referredBy:
+          type: string
+          maxLength: 100
+    UpdateCustomerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        phone:
+          type: string
+          pattern: '^[0-9]{10}$'
+        alternatePhone:
+          type: string
+          pattern: '^[0-9]{10}$'
+        email:
+          type: string
+          format: email
+        address:
+          type: string
+          maxLength: 500
+        city:
+          type: string
+        state:
+          type: string
+        pincode:
+          type: string
+          pattern: '^[0-9]{6}$'
+        systemSizeKW:
+          type: number
+          minimum: 0.1
+        roofType:
+          type: string
+          enum: [rcc_rooftop, tin_shed, ground_mount]
+        roofArea:
+          type: number
+          minimum: 0
+        gstNumber:
+          type: string
+        panNumber:
+          type: string
+        preferredInstallationDate:
+          type: string
+          format: date
+        preferredTimeSlot:
+          type: string
+          enum: [morning, afternoon, evening, anytime]
+        status:
+          type: string
+          enum: [active, inactive, blocked, pending_verification]
+        notes:
+          type: string
+          maxLength: 1000
+        referredBy:
+          type: string
+          maxLength: 100
+    Installation:
+      type: object
+      properties:
+        id:
+          type: string
+        installationId:
+          type: string
+        customer:
+          type: string
+        customerNameSnapshot:
+          type: string
+        customerPhoneSnapshot:
+          type: string
+        projectNo:
+          type: string
+        quotationNo:
+          type: string
+        systemSizeKW:
+          type: number
+        roofType:
+          type: string
+          enum: [rcc_rooftop, tin_shed, ground_mount]
+        orderDate:
+          type: string
+          format: date
+        installDate:
+          type: string
+          format: date
+        laborCost:
+          type: number
+        status:
+          type: string
+          enum: [pending_quotation, quoted, scheduled, in_progress, completed, cancelled]
+        suggestedMaterials:
+          type: array
+          items:
+            type: object
+        loadAnalysisDetails:
+          type: object
+        totalLoad:
+          type: number
+        inverterCapacity:
+          type: number
+        canRunSubmersible:
+          type: boolean
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+    CreateInstallationRequest:
+      type: object
+      required: [customer, systemSizeKW, roofType, installDate]
+      properties:
+        customer:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+        projectNo:
+          type: string
+          maxLength: 50
+        quotationNo:
+          type: string
+          maxLength: 50
+        systemSizeKW:
+          type: number
+          minimum: 0.1
+        roofType:
+          type: string
+          enum: [rcc_rooftop, tin_shed, ground_mount]
+        orderDate:
+          type: string
+          format: date
+        installDate:
+          type: string
+          format: date
+        laborCost:
+          type: number
+          minimum: 0
+        notes:
+          type: string
+          maxLength: 1000
+    UpdateInstallationRequest:
+      type: object
+      properties:
+        customer:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+        projectNo:
+          type: string
+          maxLength: 50
+        quotationNo:
+          type: string
+          maxLength: 50
+        systemSizeKW:
+          type: number
+          minimum: 0.1
+        roofType:
+          type: string
+          enum: [rcc_rooftop, tin_shed, ground_mount]
+        orderDate:
+          type: string
+          format: date
+        installDate:
+          type: string
+          format: date
+        laborCost:
+          type: number
+          minimum: 0
+        notes:
+          type: string
+          maxLength: 1000
+        status:
+          type: string
+          enum: [pending_quotation, quoted, scheduled, in_progress, completed, cancelled]
+    AssignMaterialsRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [material, qty]
+            properties:
+              material:
+                type: string
+                pattern: '^[0-9a-fA-F]{24}$'
+              qty:
+                type: number
+                minimum: 0.001
+              remark:
+                type: string
+                maxLength: 500
+        idempotencyKey:
+          type: string
+          format: uuid
+    ReverseMaterialRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+    UpdateInstallationStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending_quotation, quoted, scheduled, in_progress, completed, cancelled]
+        notes:
+          type: string
+          maxLength: 500
+    Material:
+      type: object
+      properties:
+        id:
+          type: string
+        materialCode:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        subCategory:
+          type: string
+        unit:
+          type: string
+        unitCost:
+          type: number
+        currentStock:
+          type: number
+        minimumStockLevel:
+          type: number
+        maximumStockLevel:
+          type: number
+        preferredSupplier:
+          type: object
+        alternateSuppliers:
+          type: array
+          items:
+            type: object
+        specifications:
+          type: object
+        description:
+          type: string
+        isConsumable:
+          type: boolean
+        status:
+          type: string
+        images:
+          type: array
+          items:
+            type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+    CreateMaterialRequest:
+      type: object
+      required: [name, category, unit]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        category:
+          type: string
+        subCategory:
+          type: string
+          maxLength: 50
+        unit:
+          type: string
+          enum: [nos, mtr, kg, packet, pair, bag, roll, box]
+        unitCost:
+          type: number
+          minimum: 0
+        currentStock:
+          type: number
+          minimum: 0
+        minimumStockLevel:
+          type: number
+          minimum: 0
+        maximumStockLevel:
+          type: number
+          minimum: 0
+        preferredSupplier:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+        alternateSuppliers:
+          type: array
+          items:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+        specifications:
+          type: object
+        description:
+          type: string
+          maxLength: 1000
+        isConsumable:
+          type: boolean
+    UpdateMaterialRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        category:
+          type: string
+        subCategory:
+          type: string
+          maxLength: 50
+        unit:
+          type: string
+          enum: [nos, mtr, kg, packet, pair, bag, roll, box]
+        unitCost:
+          type: number
+          minimum: 0
+        minimumStockLevel:
+          type: number
+          minimum: 0
+        maximumStockLevel:
+          type: number
+          minimum: 0
+        preferredSupplier:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+        alternateSuppliers:
+          type: array
+          items:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+        specifications:
+          type: object
+        description:
+          type: string
+          maxLength: 1000
+        isConsumable:
+          type: boolean
+        status:
+          type: string
+          enum: [active, inactive, discontinued]
+    AdjustStockRequest:
+      type: object
+      required: [adjustment, reason]
+      properties:
+        adjustment:
+          type: number
+        reason:
+          type: string
+          maxLength: 500
+    PurchaseItem:
+      type: object
+      required: [material, qty, unitCost]
+      properties:
+        material:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+        qty:
+          type: number
+          minimum: 0.001
+        unitCost:
+          type: number
+          minimum: 0
+        discount:
+          type: number
+          minimum: 0
+    Purchase:
+      type: object
+      properties:
+        id:
+          type: string
+        purchaseId:
+          type: string
+        supplier:
+          type: object
+        purchaseDate:
+          type: string
+          format: date
+        invoiceNumber:
+          type: string
+        purchaseOrderNumber:
+          type: string
+        discount:
+          type: number
+        tax:
+          type: number
+        paymentStatus:
+          type: string
+        paymentMethod:
+          type: string
+        deliveryMethod:
+          type: string
+        courierDetails:
+          type: object
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseItem'
+        notes:
+          type: string
+        status:
+          type: string
+        invoiceFileUrl:
+          type: string
+      additionalProperties: true
+    CreatePurchaseRequest:
+      type: object
+      required: [supplier, deliveryMethod, items]
+      properties:
+        supplier:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+        purchaseDate:
+          type: string
+          format: date
+        invoiceNumber:
+          type: string
+          maxLength: 50
+        purchaseOrderNumber:
+          type: string
+          maxLength: 50
+        discount:
+          type: number
+          minimum: 0
+        tax:
+          type: number
+          minimum: 0
+        paymentStatus:
+          type: string
+          enum: [pending, partial, completed]
+        paymentMethod:
+          type: string
+          enum: [cash, bank_transfer, cheque, upi, online]
+        deliveryMethod:
+          type: string
+          enum: [pickup, courier, delivery, self_delivery]
+        courierDetails:
+          type: object
+          properties:
+            courierName:
+              type: string
+            trackingId:
+              type: string
+            expectedDate:
+              type: string
+              format: date
+            deliveredDate:
+              type: string
+              format: date
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseItem'
+        notes:
+          type: string
+        idempotencyKey:
+          type: string
+          format: uuid
+    UpdatePurchaseRequest:
+      type: object
+      properties:
+        supplier:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+        purchaseDate:
+          type: string
+          format: date
+        invoiceNumber:
+          type: string
+          maxLength: 50
+        purchaseOrderNumber:
+          type: string
+          maxLength: 50
+        discount:
+          type: number
+          minimum: 0
+        tax:
+          type: number
+          minimum: 0
+        paymentStatus:
+          type: string
+          enum: [pending, partial, completed]
+        paymentMethod:
+          type: string
+          enum: [cash, bank_transfer, cheque, upi, online]
+        deliveryMethod:
+          type: string
+          enum: [pickup, courier, delivery, self_delivery]
+        courierDetails:
+          type: object
+          properties:
+            courierName:
+              type: string
+            trackingId:
+              type: string
+            expectedDate:
+              type: string
+              format: date
+            deliveredDate:
+              type: string
+              format: date
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseItem'
+        notes:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, cancelled]
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: string
+        supplierId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        alternatePhone:
+          type: string
+        email:
+          type: string
+          format: email
+        website:
+          type: string
+          format: uri
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        pincode:
+          type: string
+        gstNumber:
+          type: string
+        panNumber:
+          type: string
+        businessType:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        bankDetails:
+          type: object
+        paymentTerms:
+          type: string
+        creditLimit:
+          type: number
+        status:
+          type: string
+        notes:
+          type: string
+        averageDeliveryDays:
+          type: number
+        qualityRating:
+          type: number
+      additionalProperties: true
+    CreateSupplierRequest:
+      type: object
+      required: [name, phone, address, city, state, pincode, categories]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        phone:
+          type: string
+          pattern: '^[0-9]{10}$'
+        alternatePhone:
+          type: string
+          pattern: '^[0-9]{10}$'
+        email:
+          type: string
+          format: email
+        website:
+          type: string
+          format: uri
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        pincode:
+          type: string
+          pattern: '^[0-9]{6}$'
+        gstNumber:
+          type: string
+        panNumber:
+          type: string
+        businessType:
+          type: string
+          enum: [manufacturer, distributor, wholesaler, retailer, importer]
+        categories:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        bankDetails:
+          type: object
+        paymentTerms:
+          type: string
+          enum: [advance, credit_7_days, credit_15_days, credit_30_days, credit_45_days]
+        creditLimit:
+          type: number
+          minimum: 0
+        notes:
+          type: string
+          maxLength: 1000
+    UpdateSupplierRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        phone:
+          type: string
+          pattern: '^[0-9]{10}$'
+        alternatePhone:
+          type: string
+          pattern: '^[0-9]{10}$'
+        email:
+          type: string
+          format: email
+        website:
+          type: string
+          format: uri
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        pincode:
+          type: string
+          pattern: '^[0-9]{6}$'
+        gstNumber:
+          type: string
+        panNumber:
+          type: string
+        businessType:
+          type: string
+          enum: [manufacturer, distributor, wholesaler, retailer, importer]
+        categories:
+          type: array
+          items:
+            type: string
+        bankDetails:
+          type: object
+        paymentTerms:
+          type: string
+          enum: [advance, credit_7_days, credit_15_days, credit_30_days, credit_45_days]
+        creditLimit:
+          type: number
+          minimum: 0
+        averageDeliveryDays:
+          type: integer
+          minimum: 0
+        qualityRating:
+          type: number
+          minimum: 0
+          maximum: 5
+        status:
+          type: string
+          enum: [active, inactive, suspended, blacklisted]
+        notes:
+          type: string
+          maxLength: 1000
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        type:
+          type: string
+        isRead:
+          type: boolean
+        material:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+    SuggestedBOMResponse:
+      type: object
+      properties:
+        roofType:
+          type: string
+          enum: [rcc_rooftop, tin_shed, ground_mount]
+        systemSizeKW:
+          type: number
+        materials:
+          type: array
+          items:
+            type: object
+    BOMTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        templateName:
+          type: string
+        roofType:
+          type: string
+          enum: [rcc_rooftop, tin_shed, ground_mount]
+        systemSizeKW:
+          type: number
+        section:
+          type: string
+        sectionOrder:
+          type: integer
+        material:
+          type: object
+        qtyFormula:
+          type: object
+        isOptional:
+          type: boolean
+        defaultRemark:
+          type: string
+        wastageFactor:
+          type: number
+        priority:
+          type: integer
+        isActive:
+          type: boolean
+      additionalProperties: true
+    CreateBOMTemplateRequest:
+      type: object
+      required: [templateName, roofType, systemSizeKW, section, material, qtyFormula]
+      properties:
+        templateName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        roofType:
+          type: string
+          enum: [rcc_rooftop, tin_shed, ground_mount]
+        systemSizeKW:
+          type: number
+          minimum: 0.1
+        section:
+          type: string
+        sectionOrder:
+          type: integer
+          minimum: 0
+        material:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+        qtyFormula:
+          type: object
+          required:
+            - type
+            - value
+          properties:
+            type:
+              type: string
+              enum: [fixed, per_kw, linear, step]
+            value:
+              type: number
+            minQty:
+              type: number
+              minimum: 0
+            maxQty:
+              type: number
+              minimum: 0
+            stepSizes:
+              type: array
+              items:
+                type: object
+                required: [fromKW, toKW, qty]
+                properties:
+                  fromKW:
+                    type: number
+                  toKW:
+                    type: number
+                  qty:
+                    type: number
+        isOptional:
+          type: boolean
+        defaultRemark:
+          type: string
+          maxLength: 500
+        wastageFactor:
+          type: number
+          minimum: 0
+          maximum: 100
+        priority:
+          type: integer
+          minimum: 1
+    UpdateBOMTemplateRequest:
+      type: object
+      properties:
+        templateName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        roofType:
+          type: string
+          enum: [rcc_rooftop, tin_shed, ground_mount]
+        systemSizeKW:
+          type: number
+          minimum: 0.1
+        section:
+          type: string
+        sectionOrder:
+          type: integer
+          minimum: 0
+        material:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+        qtyFormula:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [fixed, per_kw, linear, step]
+            value:
+              type: number
+            minQty:
+              type: number
+              minimum: 0
+            maxQty:
+              type: number
+              minimum: 0
+            stepSizes:
+              type: array
+              items:
+                type: object
+                required: [fromKW, toKW, qty]
+                properties:
+                  fromKW:
+                    type: number
+                  toKW:
+                    type: number
+                  qty:
+                    type: number
+        isOptional:
+          type: boolean
+        defaultRemark:
+          type: string
+          maxLength: 500
+        wastageFactor:
+          type: number
+          minimum: 0
+          maximum: 100
+        priority:
+          type: integer
+          minimum: 1
+        isActive:
+          type: boolean
+    BulkCreateBOMTemplatesRequest:
+      type: object
+      required: [templates]
+      properties:
+        templates:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CreateBOMTemplateRequest'
+    NotificationListQuery:
+      type: object
+      properties:
+        page:
+          type: integer
+          default: 1
+        limit:
+          type: integer
+          default: 20
+        unread:
+          type: boolean
+          default: false
+        type:
+          type: string
+          enum: [low_stock, system, info, warning]
+        sortBy:
+          type: string
+          enum: [createdAt, updatedAt]
+        sortOrder:
+          type: string
+          enum: [asc, desc]
+          default: desc
+paths:
+  /auth/login:
+    post:
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Login successful
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      accessToken:
+                        type: string
+                      refreshToken:
+                        type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+  /auth/register:
+    post:
+      summary: Register user (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  statusCode:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: User registered successfully
+                  data:
+                    $ref: '#/components/schemas/User'
+                  timestamp:
+                    type: string
+                    format: date-time
+  /auth/refresh-token:
+    post:
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: New access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      accessToken:
+                        type: string
+                      user:
+                        $ref: '#/components/schemas/User'
+  /auth/forgot-password:
+    post:
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Forgot password request accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /auth/reset-password:
+    post:
+      summary: Reset password with token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /auth/profile:
+    get:
+      summary: Get current user profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  statusCode:
+                    type: integer
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/User'
+                  timestamp:
+                    type: string
+                    format: date-time
+    put:
+      summary: Update current user profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                department:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /auth/change-password:
+    post:
+      summary: Change password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /auth/logout:
+    post:
+      summary: Logout current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /customers:
+    get:
+      summary: List customers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, blocked, pending_verification]
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: roofType
+          in: query
+          schema:
+            type: string
+            enum: [rcc_rooftop, tin_shed, ground_mount]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [name, createdAt, systemSizeKW]
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Customers list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiPaginatedResponse'
+    post:
+      summary: Create customer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /customers/search:
+    get:
+      summary: Search customers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  statusCode:
+                    type: integer
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Customer'
+                  timestamp:
+                    type: string
+                    format: date-time
+  /customers/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Get customer by ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Customer object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: Update customer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCustomerRequest'
+      responses:
+        '200':
+          description: Customer updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    delete:
+      summary: Delete customer (soft delete)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Customer soft deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /customers/{id}/installations:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Get customer installations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated installations for customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiPaginatedResponse'
+  /customers/{id}/history:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Get customer history
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Customer history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  statusCode:
+                    type: integer
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      customer:
+                        $ref: '#/components/schemas/Customer'
+                      summary:
+                        type: object
+                      installations:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Installation'
+                  timestamp:
+                    type: string
+                    format: date-time
+  /installations:
+    get:
+      summary: List installations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: customer
+          in: query
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending_quotation, quoted, scheduled, in_progress, completed, cancelled]
+        - name: roofType
+          in: query
+          schema:
+            type: string
+            enum: [rcc_rooftop, tin_shed, ground_mount]
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [installDate, createdAt, systemSizeKW, status]
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Installations list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiPaginatedResponse'
+    post:
+      summary: Create installation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInstallationRequest'
+      responses:
+        '201':
+          description: Installation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  statusCode:
+                    type: integer
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      installation:
+                        $ref: '#/components/schemas/Installation'
+                      suggestedMaterials:
+                        type: array
+                        items:
+                          type: object
+                      loadAnalysis:
+                        type: object
+                  timestamp:
+                    type: string
+                    format: date-time
+  /installations/suggested-bom:
+    get:
+      summary: Get suggested BOM
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roofType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [rcc_rooftop, tin_shed, ground_mount]
+        - name: systemSizeKW
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: 0.1
+      responses:
+        '200':
+          description: Suggested BOM
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /installations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Get installation by ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Installation object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: Update installation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateInstallationRequest'
+      responses:
+        '200':
+          description: Installation updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    delete:
+      summary: Delete installation (soft delete)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Installation soft deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /installations/{id}/materials:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    post:
+      summary: Assign materials to installation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignMaterialsRequest'
+      responses:
+        '200':
+          description: Materials assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /installations/{id}/materials/{usageId}/reverse:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+      - $ref: '#/components/parameters/UsageIdParam'
+    post:
+      summary: Reverse material assignment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReverseMaterialRequest'
+      responses:
+        '200':
+          description: Material reversed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /installations/{id}/bom-pdf:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Generate BOM PDF
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+  /installations/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    patch:
+      summary: Update installation status
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateInstallationStatusRequest'
+      responses:
+        '200':
+          description: Installation status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /installations/{id}/load-analysis:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Get load analysis for installation
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Load analysis result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /materials:
+    get:
+      summary: List materials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, discontinued]
+            default: active
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: lowStock
+          in: query
+          schema:
+            type: boolean
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [name, category, currentStock, createdAt]
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        '200':
+          description: Materials list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiPaginatedResponse'
+    post:
+      summary: Create material
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMaterialRequest'
+      responses:
+        '201':
+          description: Material created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /materials/low-stock:
+    get:
+      summary: Get low stock materials
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Low stock materials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  statusCode:
+                    type: integer
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Material'
+                  timestamp:
+                    type: string
+                    format: date-time
+  /materials/summary:
+    get:
+      summary: Get stock summary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Stock summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /materials/search:
+    get:
+      summary: Search materials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Material search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  statusCode:
+                    type: integer
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Material'
+                  timestamp:
+                    type: string
+                    format: date-time
+  /materials/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Get material by ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Material object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: Update material
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMaterialRequest'
+      responses:
+        '200':
+          description: Material updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    delete:
+      summary: Delete material (soft delete)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Material soft deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /materials/{id}/image:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    post:
+      summary: Upload material image
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /materials/{id}/history:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Get material stock history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated material history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiPaginatedResponse'
+  /materials/{id}/stock:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    patch:
+      summary: Adjust material stock
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdjustStockRequest'
+      responses:
+        '200':
+          description: Stock adjusted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /purchases:
+    get:
+      summary: List purchases
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: supplier
+          in: query
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, processing, completed, cancelled]
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: paymentStatus
+          in: query
+          schema:
+            type: string
+            enum: [pending, partial, completed]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [purchaseDate, createdAt, grandTotal]
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Purchases list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiPaginatedResponse'
+    post:
+      summary: Create purchase
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePurchaseRequest'
+      responses:
+        '201':
+          description: Purchase created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /purchases/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Get purchase by ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Purchase object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: Update purchase
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePurchaseRequest'
+      responses:
+        '200':
+          description: Purchase updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    delete:
+      summary: Delete purchase (soft delete)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Purchase soft deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /purchases/{id}/invoice:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    post:
+      summary: Upload purchase invoice
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                invoice:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Invoice uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    get:
+      summary: Download purchase invoice
+      security:
+        - bearerAuth: []
+      responses:
+        '302':
+          description: Redirect to invoice URL
+  /purchases/{id}/complete:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    patch:
+      summary: Complete purchase
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Purchase completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /suppliers:
+    get:
+      summary: List suppliers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, suspended, blacklisted]
+        - name: businessType
+          in: query
+          schema:
+            type: string
+            enum: [manufacturer, distributor, wholesaler, retailer, importer]
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: hasGST
+          in: query
+          schema:
+            type: boolean
+        - name: minRating
+          in: query
+          schema:
+            type: number
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        '200':
+          description: Suppliers list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiPaginatedResponse'
+    post:
+      summary: Create supplier
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSupplierRequest'
+      responses:
+        '201':
+          description: Supplier created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /suppliers/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Get supplier by ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Supplier object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: Update supplier
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSupplierRequest'
+      responses:
+        '200':
+          description: Supplier updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    delete:
+      summary: Delete supplier (soft delete)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Supplier soft deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /suppliers/{id}/purchases:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Get supplier purchase history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, processing, completed, cancelled]
+      responses:
+        '200':
+          description: Supplier purchases
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiPaginatedResponse'
+  /bom-templates:
+    get:
+      summary: List BOM templates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: roofType
+          in: query
+          schema:
+            type: string
+            enum: [rcc_rooftop, tin_shed, ground_mount]
+        - name: section
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [templateName, roofType, systemSizeKW, section]
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        '200':
+          description: BOM templates list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiPaginatedResponse'
+    post:
+      summary: Create BOM template
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBOMTemplateRequest'
+      responses:
+        '201':
+          description: BOM template created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /bom-templates/by-roof-type:
+    get:
+      summary: Get BOM template by roof type
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roofType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [rcc_rooftop, tin_shed, ground_mount]
+        - name: systemSizeKW
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: 0.1
+      responses:
+        '200':
+          description: BOM by roof type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /bom-templates/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      summary: Get BOM template by ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: BOM template object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: Update BOM template
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBOMTemplateRequest'
+      responses:
+        '200':
+          description: BOM template updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    delete:
+      summary: Delete BOM template
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: BOM template deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /bom-templates/bulk:
+    post:
+      summary: Bulk create BOM templates
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkCreateBOMTemplatesRequest'
+      responses:
+        '201':
+          description: Bulk templates created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /notifications:
+    get:
+      summary: List notifications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: unread
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [low_stock, system, info, warning]
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [createdAt, updatedAt]
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Notifications list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiPaginatedResponse'
+  /notifications/unread-count:
+    get:
+      summary: Get unread notification count
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  statusCode:
+                    type: integer
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      unreadCount:
+                        type: integer
+                  timestamp:
+                    type: string
+                    format: date-time
+  /notifications/{id}/read:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    put:
+      summary: Mark notification as read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Notification marked read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /notifications/read-all:
+    put:
+      summary: Mark all notifications as read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All notifications marked read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Health check response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  service:
+                    type: string
+                  version:
+                    type: string
+                  environment:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+  /ready:
+    get:
+      summary: Readiness probe
+      responses:
+        '200':
+          description: Readiness status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+  /live:
+    get:
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Liveness status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
