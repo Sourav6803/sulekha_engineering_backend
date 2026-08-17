@@ -18,10 +18,23 @@ router.get(
   asyncHandler(notificationController.listNotifications)
 );
 
+// GET /api/v1/notifications/unified - Get unified internal + external notifications
+router.get(
+  '/unified',
+  validate(notificationValidation.listNotificationsValidation, 'query'),
+  asyncHandler(notificationController.getUnifiedNotifications)
+);
+
 // GET /api/v1/notifications/unread-count - Get unread count
 router.get(
   '/unread-count',
   asyncHandler(notificationController.getUnreadCount)
+);
+
+// GET /api/v1/notifications/external/pm-surya-ghar - Fetch PM Surya Ghar notifications
+router.get(
+  '/external/pm-surya-ghar',
+  asyncHandler(notificationController.fetchPMSuryaGharNotifications)
 );
 
 // PUT /api/v1/notifications/:id/read - Mark notification as read

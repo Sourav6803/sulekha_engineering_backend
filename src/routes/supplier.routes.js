@@ -56,4 +56,19 @@ router.get(
   asyncHandler(supplierController.getSupplierPurchases)
 );
 
+// POST /api/v1/suppliers/bulk - Bulk create suppliers
+router.post(
+  '/bulk',
+  authorize('admin', 'manager'),
+  validate(supplierValidation.bulkCreateSuppliersValidation),
+  asyncHandler(supplierController.bulkCreateSuppliers)
+);
+
+// GET /api/v1/suppliers/analysis/performance - Get suppliers performance
+router.get(
+  '/analysis/performance',
+  validate(supplierValidation.supplierPerformanceValidation, 'query'),
+  asyncHandler(supplierController.getSuppliersPerformance)
+);
+
 export default router;
