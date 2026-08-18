@@ -223,8 +223,11 @@ export const updateMaterial = async (req, res) => {
     }
   }
 
-  // Update material
-  Object.assign(material, updateData);
+  // Update material — only apply keys that were explicitly provided
+  const safeUpdate = Object.fromEntries(
+    Object.entries(updateData).filter(([, value]) => value !== undefined),
+  );
+  Object.assign(material, safeUpdate);
   material.updatedBy = req.userId;
   await material.save();
 

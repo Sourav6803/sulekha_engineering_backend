@@ -17,6 +17,9 @@ export const createMaterialValidation = Joi.object({
       'string.max': 'Name cannot exceed 100 characters',
       'any.required': 'Name is required',
     }),
+  description: Joi.string().max(200).allow('').messages({
+    'string.max': 'Description cannot exceed 200 characters',
+  }),
   unit: materialUnit.required().messages({
     'any.required': 'Unit is required',
   }),
@@ -31,6 +34,9 @@ export const createMaterialValidation = Joi.object({
 
 export const updateMaterialValidation = Joi.object({
   name: Joi.string().min(2).max(100),
+  description: Joi.string().max(200).allow('').messages({
+    'string.max': 'Description cannot exceed 200 characters',
+  }),
   unit: materialUnit,
   unitCost: Joi.number().min(0),
   minimumStockLevel: Joi.number().min(0),
