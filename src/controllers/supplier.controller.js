@@ -56,11 +56,11 @@ export const listSuppliers = async (req, res) => {
   const cacheKey = `suppliers:list:${JSON.stringify({ ...filter, page, limit, sort })}`;
   const cached = await redisGet(cacheKey);
 
-  if (cached) {
-    return ApiResponse.send(res, cached.data, 'Suppliers fetched from cache', 200, {
-      pagination: cached.pagination,
-    });
-  }
+  // if (cached) {
+  //   return ApiResponse.send(res, cached.data, 'Suppliers fetched from cache', 200, {
+  //     pagination: cached.pagination,
+  //   });
+  // }
 
   // Execute query
   const [suppliers, total] = await Promise.all([
@@ -94,9 +94,9 @@ export const getSupplier = async (req, res) => {
   const cacheKey = `supplier:${id}`;
   const cached = await redisGet(cacheKey);
 
-  if (cached) {
-    return ApiResponse.send(res, cached, 'Supplier fetched from cache');
-  }
+  // if (cached) {
+  //   return ApiResponse.send(res, cached, 'Supplier fetched from cache');
+  // }
 
   const supplier = await Supplier.findById(id).lean();
 
@@ -165,8 +165,11 @@ export const updateSupplier = async (req, res) => {
     }
   }
 
-  // Update supplier
-  Object.assign(supplier, updateData);
+  // Update supplier — only apply keys that were explicitly provided
+  const safeUpdate = Object.fromEntries(
+    Object.entries(updateData).filter(([, value]) => value !== undefined),
+  );
+  Object.assign(supplier, safeUpdate);
   supplier.updatedBy = req.userId;
   await supplier.save();
 
