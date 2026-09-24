@@ -32,8 +32,13 @@ const formatErrorResponse = (error, isDevelopment = false) => {
  * Centralized error handler middleware
  */
 export const errorHandler = (err, req, res, next) => {
-  // Default error values
-  let statusCode = err.statusCode || 500;
+  // Default error values.
+  //
+  // `err.status` is what Express and the 404 handler in app.js set, while
+  // `err.statusCode` is what our ApiError sets. Reading only `statusCode` meant
+  // every unmatched route was reported as a 500 Internal Server Error, which
+  // hides real 404s (a missing/renamed route looks like a server crash).
+  let statusCode = err.statusCode || err.status || 500;
   let error = err;
 
   // Log the error
@@ -96,6 +101,12 @@ export const errorHandler = (err, req, res, next) => {
   if (err.name === 'TokenExpiredError') {
     statusCode = 401;
     error = new ApiError(401, 'Token expired', 'TOKEN_EXPIRED');
+  }
+
+  // Route not matched (or a plain not-found raised without an ApiError), so the
+  // response carries a NOT_FOUND code instead of the default INTERNAL_ERROR.
+  if (statusCode === 404 && !(error instanceof ApiError)) {
+    error = new ApiError(404, err.message || 'Not Found', 'NOT_FOUND');
   }
 
   // Multer File Upload Error
