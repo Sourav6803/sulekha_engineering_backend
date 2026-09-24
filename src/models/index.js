@@ -10,6 +10,9 @@ import StockLedger from './StockLedger.js';
 import Notification from './Notification.js';
 import Counter from './Counter.js';
 import User from './User.js';
+import Quotation from './Quotation.js';
+import CompanyProfile from './CompanyProfile.js';
+import Agreement from './Agreement.js';
 
 export {
   Supplier,
@@ -21,7 +24,10 @@ export {
   StockLedger,
   Notification,
   Counter,
-  User
+  User,
+  Quotation,
+  CompanyProfile,
+  Agreement
 };
 
 export default {
@@ -34,5 +40,8 @@ export default {
   StockLedger,
   Notification,
   Counter,
-  User
+  User,
+  Quotation,
+  CompanyProfile,
+  Agreement
 };

@@ -56,7 +56,17 @@ const UserSchema = new Schema({
       'view_reports',
       'generate_pdf',
       'manage_users',
-      'view_audit_logs'
+      'view_audit_logs',
+      // Quotation module. Access is role-gated (admin/manager) for now so that
+      // existing users are not locked out before these are granted; they are
+      // declared here so hasPermission('...') can be enabled later without a
+      // schema change.
+      'create_quotation',
+      'edit_quotation',
+      'delete_quotation',
+      'view_quotation',
+      'generate_quotation_pdf',
+      'manage_quotations'
     ]
   }],
 

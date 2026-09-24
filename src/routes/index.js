@@ -8,6 +8,8 @@ import customerRoutes from './customer.routes.js';
 import installationRoutes from './installation.routes.js';
 import bomTemplateRoutes from './bomTemplate.routes.js';
 import notificationRoutes from './notification.routes.js';
+import quotationRoutes from './quotation.routes.js';
+import agreementRoutes from './agreement.routes.js';
 
 const router = Router();
 
@@ -23,5 +25,7 @@ router.use('/customers', customerRoutes);
 router.use('/installations', installationRoutes);
 router.use('/bom-templates', bomTemplateRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/quotations', quotationRoutes);
+router.use('/agreements', agreementRoutes);
 
 export default router;
