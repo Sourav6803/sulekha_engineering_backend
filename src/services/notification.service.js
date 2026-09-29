@@ -1,5 +1,6 @@
 // src/services/notification.service.js
 import { Notification, Material } from '../models/index.js';
+import { redisDel } from '../config/redis.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -75,6 +76,116 @@ export const notificationService = {
     return `${emoji} ${urgency}: ${material.name} (${material.materialCode}) stock is ${currentStock === 0 ? 'COMPLETELY OUT' : 'LOW'}. ` +
            `Current stock: ${currentStock} ${material.unit}, Reorder level: ${reorderLevel} ${material.unit}. ` +
            `Please reorder immediately.`;
+  },
+
+  /**
+   * Tell one named user that the office has filed a signed copy.
+   *
+   * Addressed to the agent who owns the application, so it is the only person
+   * who sees it — unlike the staff-wide low-stock alerts, which leave `recipient`
+   * unset. The copy comes in ready-made from `data/signedDocumentNotice.js`,
+   * which is what keeps the app notification and the email saying the same thing.
+   *
+   * @param {Object} args
+   * @param {Object} args.application - The application the document was filed on.
+   * @param {String} args.recipient - The agent's user id.
+   * @param {Object} args.notice - The Bengali copy, from buildSignedDocumentNotice.
+   * @returns {Promise<Object>} The stored notification.
+   */
+  async createSignedDocumentNotification({ application, recipient, notice }) {
+    const created = await Notification.create({
+      type: 'document',
+      source: 'internal',
+      recipient,
+      title: notice.title,
+      message: notice.message,
+      // The client routes on this: a leading slash means an in-app destination,
+      // not something to open in a new tab.
+      link: `/applications/${application._id}`,
+      category: 'info',
+      priority: 'medium',
+      isExternal: false,
+      metadata: {
+        applicationId: String(application._id),
+        applicationNo: application.applicationNo,
+        consumerName: application.consumerName,
+        kinds: notice.kinds,
+      },
+    });
+
+    // The list endpoints cache for an hour, so without this the agent's bell
+    // would not ring until the cache aged out. Best-effort: the cache layer is a
+    // no-op when Redis is down.
+    await redisDel('notifications:list:*');
+    await redisDel('notifications:unified:*');
+
+    logger.info(
+      { applicationNo: application.applicationNo, kinds: notice.kinds, recipient: String(recipient) },
+      'Signed-document notification created'
+    );
+
+    return created;
+  },
+
+  /**
+   * Tell one office user that a field agent has filed an application — either
+   * opened a draft on it or submitted it.
+   *
+   * Addressed to the named recipient for the same reason the signed-copy notice
+   * is: the office reads these, not the agents. Leaving `recipient` unset would
+   * put every agent's filings in every agent's own bell, and the agent who filed
+   * it already knows what they just did. The service fans this out to each
+   * office user (see newApplicationNotice.service.js).
+   *
+   * The copy comes ready-made from `data/newApplicationNotice.js`, which is what
+   * keeps the app notification and the email saying the same thing.
+   *
+   * @param {Object} args
+   * @param {Object} args.application - The application that was filed.
+   * @param {String} args.recipient - The office user's id.
+   * @param {Object} args.notice - The Bengali copy, from buildNewApplicationNotice.
+   * @returns {Promise<Object>} The stored notification.
+   */
+  async createNewApplicationNotification({ application, recipient, notice }) {
+    const created = await Notification.create({
+      type: 'application',
+      source: 'internal',
+      recipient,
+      title: notice.title,
+      message: notice.message,
+      // The client routes on this: a leading slash means an in-app destination,
+      // not something to open in a new tab.
+      link: `/applications/${application._id}`,
+      category: notice.category,
+      priority: notice.priority,
+      isExternal: false,
+      metadata: {
+        applicationId: String(application._id),
+        applicationNo: application.applicationNo,
+        consumerName: application.consumerName,
+        agentName: application.agentNameSnapshot,
+        stage: notice.stage,
+        resubmitted: notice.resubmitted === true,
+        systemSizeKW: application.deal?.systemSizeKW ?? null,
+      },
+    });
+
+    // The list endpoints cache for an hour, so without this the office bell would
+    // not ring until the cache aged out. Best-effort: the cache layer is a no-op
+    // when Redis is down.
+    await redisDel('notifications:list:*');
+    await redisDel('notifications:unified:*');
+
+    logger.info(
+      {
+        applicationNo: application.applicationNo,
+        stage: notice.stage,
+        recipient: String(recipient),
+      },
+      'New-application notification created'
+    );
+
+    return created;
   },
 
   /**

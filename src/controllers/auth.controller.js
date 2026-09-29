@@ -90,10 +90,13 @@ export const login = async (req, res) => {
       permissions: user.permissions || [],
       phone: user.phone,
       department: user.department,
+      // The client sends the user straight to the change-password screen when
+      // an admin created the account with a generated password.
+      mustChangePassword: user.mustChangePassword === true,
     },
     accessToken,
     refreshToken,
-  }, 'Login successful');
+  }, user.mustChangePassword ? 'Login successful — please set your own password' : 'Login successful');
 };
 
 /**
@@ -108,7 +111,9 @@ export const register = async (req, res) => {
     throw ApiError.conflict('User with this email already exists');
   }
 
-  // Create user
+  // Create user. The password was chosen by the admin who is filling this in,
+  // so the new account is asked to replace it on first sign-in — the same rule
+  // the agent invite flow applies.
   const user = await User.createUser({
     name,
     email,
@@ -116,7 +121,9 @@ export const register = async (req, res) => {
     phone,
     role: role || 'viewer',
     department: department || 'administration',
-    // createdBy: req.user?._id,
+    mustChangePassword: true,
+    createdBy: req.user?._id,
+    updatedBy: req.user?._id,
   });
 
   // Log registration
@@ -153,6 +160,7 @@ export const getProfile = async (req, res) => {
     department: user.department,
     status: user.status,
     lastLogin: user.lastLogin,
+    mustChangePassword: user.mustChangePassword === true,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   });
@@ -204,12 +212,9 @@ export const changePassword = async (req, res) => {
     throw ApiError.unauthorized('Current password is incorrect');
   }
 
-  // Hash new password
-  const salt = await bcrypt.genSalt(parseInt(config.BCRYPT_SALT_ROUNDS));
-  const passwordHash = await bcrypt.hash(newPassword, salt);
-
-  // Update password
-  user.passwordHash = passwordHash;
+  // Hash the new password and clear the "must change it" flag in one place, so
+  // the admin-created accounts stop being nagged the moment they comply.
+  await user.setPassword(newPassword);
   user.updatedBy = req.userId;
   await user.save();
 
@@ -261,14 +266,9 @@ export const resetPassword = async (req, res) => {
     throw ApiError.badRequest('Invalid or expired reset token');
   }
 
-  // Hash new password
-  const salt = await bcrypt.genSalt(parseInt(config.BCRYPT_SALT_ROUNDS));
-  const passwordHash = await bcrypt.hash(newPassword, salt);
-
-  // Update password and clear reset token
-  user.passwordHash = passwordHash;
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpires = undefined;
+  // Hashing, the "must change password" flag and the reset token are all part
+  // of setPassword, so the two reset paths cannot drift apart.
+  await user.setPassword(newPassword);
   user.updatedBy = user._id;
   await user.save();
 

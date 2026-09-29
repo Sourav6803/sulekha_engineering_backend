@@ -11,6 +11,17 @@
 
 import { calculatePanelQty } from './quotationNumber.js';
 import { DEFAULT_OVERVIEW_TEMPLATE, DEFAULT_TERMS, DEFAULT_PAYMENT_TERMS } from '../models/CompanyProfile.js';
+import {
+  DEFAULT_PARTNER_OVERVIEW_TEMPLATE,
+  DEFAULT_PARTNER_TERMS,
+  DEFAULT_PARTNER_PAYMENT_TERMS,
+  DEFAULT_PARTNER_TITLE,
+  DEFAULT_PARTNER_TAGLINE,
+  DEFAULT_QUOTATION_TYPE,
+} from '../data/quotationTypes.js';
+
+/** Is this the project/material sheet rather than the domestic one? */
+const isPartner = (quotationType) => quotationType === 'partner';
 
 /** Replace {{token}} placeholders. Unknown tokens are left untouched. */
 export const fillTemplate = (template, values = {}) =>
@@ -37,9 +48,14 @@ export const resolveStructure = (profile, structureType) => {
  * The System Overview paragraph from the existing template.
  * @returns {String}
  */
-export const buildSystemOverview = (profile, { systemSizeKW, inverterCapacityKW, structureType }) => {
+export const buildSystemOverview = (
+  profile,
+  { systemSizeKW, inverterCapacityKW, structureType, quotationType }
+) => {
   const structure = resolveStructure(profile, structureType);
-  const template = profile?.overviewTemplate || DEFAULT_OVERVIEW_TEMPLATE;
+  const template = isPartner(quotationType)
+    ? profile?.partnerOverviewTemplate || DEFAULT_PARTNER_OVERVIEW_TEMPLATE
+    : profile?.overviewTemplate || DEFAULT_OVERVIEW_TEMPLATE;
 
   return fillTemplate(template, {
     systemSizeKW: formatNumber(systemSizeKW),
@@ -64,6 +80,12 @@ const formatNumber = (value) => {
  * @returns {Array<{description,brandModel,qty,unit,order}>}
  */
 export const buildDefaultItems = (profile, data = {}) => {
+  // The domestic sheet starts from the company's eight-line template. A partner
+  // sheet has no company-wide template — every project BOQ is priced line by
+  // line against its own drawings — so it starts empty rather than pre-filled
+  // with domestic lines that do not apply.
+  if (isPartner(data.quotationType)) return [];
+
   const structure = resolveStructure(profile, data.structureType);
   const panelWp = data.panelWp || profile?.defaultPanelWp || 610;
   const panelQty =
@@ -103,21 +125,47 @@ export const buildDefaultItems = (profile, data = {}) => {
     });
 };
 
-/** A copy of the company's default terms (never the profile's own objects). */
-export const buildDefaultTerms = (profile) =>
-  (profile?.defaultTerms?.length ? profile.defaultTerms : DEFAULT_TERMS).map((term) => ({
+/**
+ * A copy of the company's default terms (never the profile's own objects).
+ *
+ * The two sheets state different terms — the domestic one promises a 10-year
+ * inverter warranty, the project sheet a 5-year one plus a 5-year AMC — so the
+ * set is chosen by quotation type. The profile may override either set, but a
+ * quotation must never print bare, hence the code-level fallbacks.
+ */
+export const buildDefaultTerms = (profile, quotationType) => {
+  if (isPartner(quotationType)) {
+    const source = profile?.partnerTerms?.length ? profile.partnerTerms : DEFAULT_PARTNER_TERMS;
+    return source.map((term) => ({ label: term.label ?? null, text: term.text }));
+  }
+  return (profile?.defaultTerms?.length ? profile.defaultTerms : DEFAULT_TERMS).map((term) => ({
     label: term.label ?? null,
     text: term.text,
   }));
+};
 
-/** A copy of the company's default payment terms. */
-export const buildDefaultPaymentTerms = (profile) =>
-  (profile?.defaultPaymentTerms?.length ? profile.defaultPaymentTerms : DEFAULT_PAYMENT_TERMS).map((term) => ({
-    text: term.text,
-  }));
+/** A copy of the company's default payment terms for this quotation type. */
+export const buildDefaultPaymentTerms = (profile, quotationType) => {
+  if (isPartner(quotationType)) {
+    const source = profile?.partnerPaymentTerms?.length
+      ? profile.partnerPaymentTerms
+      : DEFAULT_PARTNER_PAYMENT_TERMS;
+    return source.map((term) => ({ text: term.text }));
+  }
+  return (profile?.defaultPaymentTerms?.length ? profile.defaultPaymentTerms : DEFAULT_PAYMENT_TERMS).map(
+    (term) => ({ text: term.text })
+  );
+};
 
-/** Snapshot of the company details frozen onto a quotation. */
-export const buildCompanySnapshot = (profile) => ({
+/**
+ * Snapshot of the company details frozen onto a quotation.
+ *
+ * Both sheet headings are frozen, not just the domestic one, so a reprint of a
+ * project sheet still carries its own title and tagline even if the company
+ * settings are edited afterwards. The terms are frozen for the sheet being
+ * issued — the two sheets state different ones.
+ */
+export const buildCompanySnapshot = (profile, quotationType = DEFAULT_QUOTATION_TYPE) => ({
   name: profile?.name || '',
   addressLines: Array.isArray(profile?.addressLines) ? [...profile.addressLines] : [],
   phone: profile?.phone || '',
@@ -129,11 +177,13 @@ export const buildCompanySnapshot = (profile) => ({
   accountNumber: profile?.bankDetails?.accountNumber || '',
   ifsc: profile?.bankDetails?.ifsc || '',
   quotationTitle: profile?.quotationTitle || '',
+  partnerTitle: profile?.partnerTitle || DEFAULT_PARTNER_TITLE,
+  tagline: profile?.partnerTagline || DEFAULT_PARTNER_TAGLINE,
   logoPath: profile?.logoPath || '',
   // Fixed company-wide wording, so a reprinted quotation - including a record
   // imported from the old register - always states the standard terms.
-  terms: buildDefaultTerms(profile),
-  paymentTerms: buildDefaultPaymentTerms(profile),
+  terms: buildDefaultTerms(profile, quotationType),
+  paymentTerms: buildDefaultPaymentTerms(profile, quotationType),
 });
 
 export default {

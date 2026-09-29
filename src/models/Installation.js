@@ -49,7 +49,9 @@ const InstallationSchema = new Schema({
   roofType: {
     type: String,
     required: [true, 'Roof type is required'],
-    enum: ['rcc_rooftop', 'tin_shed', 'ground_mount']
+    // Mirrors SITE_TYPES in src/data/applicationChecklist.js — the application
+    // carries the site type across when it is approved.
+    enum: ['rcc_rooftop', 'tin_shed', 'high_rise_structure', 'ground_mount']
   },
 
   // Load Analysis

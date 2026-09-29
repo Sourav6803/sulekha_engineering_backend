@@ -8,6 +8,7 @@ import config from '../config/env.js';
 import logger from '../utils/logger.js';
 import { ApiError } from '../utils/ApiError.js';
 import { formatQuotationAmount } from '../utils/quotationNumber.js';
+import { DEFAULT_PARTNER_TITLE, DEFAULT_PARTNER_TAGLINE } from '../data/quotationTypes.js';
 
 /**
  * Quotation document renderer.
@@ -54,8 +55,22 @@ export const PAGE_CONTENT_HEIGHT_MM = 297 - DOC_MARGIN_MM * 2;
 const MM_TO_PX = 96 / 25.4;
 export const PAGE_CONTENT_HEIGHT_PX = Math.floor(PAGE_CONTENT_HEIGHT_MM * MM_TO_PX);
 
-/** Shrink steps applied when the content does not fit on one page. */
+/** Shrink steps applied when the content does not fit on the allowed pages. */
 export const FONT_STEPS = [8, 7.5, 7, 6.5, 6];
+
+/**
+ * How many A4 pages a sheet may run to.
+ *
+ * The domestic sheet is one flat table that always fits a single page; a
+ * domestic quotation that spilled onto a second sheet would be a mistake, so it
+ * is refused rather than printed. A business sheet is a multi-section project
+ * BOQ with its own specification column — the Bank of Baroda quotation runs 29
+ * lines over two sections — so it is allowed a second page.
+ */
+export const MAX_PAGES = { consumer: 1, partner: 2 };
+
+/** Page allowance for a quotation type, defaulting to the domestic sheet. */
+export const maxPagesFor = (quotationType) => MAX_PAGES[quotationType] || MAX_PAGES.consumer;
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
@@ -80,6 +95,7 @@ export const formatDocumentDate = (value) => {
 // logo
 // ============================================================================
 let logoCache = null;
+let brandLogoCache = null;
 
 /**
  * Resolve the logo as a base64 data URI so the print browser never depends on a
@@ -111,6 +127,41 @@ export const loadLogoDataUri = async (logoPathOverride = null) => {
   }
 
   logger.warn('Quotation logo not found - the document will print without it');
+  return null;
+};
+
+/**
+ * The PM Surya Ghar emblem that heads a business sheet, sitting between the
+ * company block and the Sulekha logo — the layout the manual project sheets use.
+ *
+ * It is optional: when the file is absent the sheet still prints, showing the
+ * "Empanelled Vendor" wording on its own.
+ *
+ *   assets/pm-surya-ghar-logo.png   (preferred)
+ *   assets/pm-surya-ghar-logo.jpeg
+ */
+export const loadBrandLogoDataUri = async () => {
+  if (brandLogoCache) return brandLogoCache;
+
+  const candidates = [
+    path.join(__dirname, '..', '..', 'assets', 'pm-surya-ghar-logo.png'),
+    path.join(__dirname, '..', '..', 'assets', 'pm-surya-ghar-logo.jpeg'),
+    path.join(__dirname, '..', '..', 'assets', 'pm-surya-ghar-logo.jpg'),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      if (!fs.existsSync(candidate)) continue;
+      const buffer = await fsp.readFile(candidate);
+      const mime = path.extname(candidate).toLowerCase() === '.png' ? 'image/png' : 'image/jpeg';
+      brandLogoCache = `data:${mime};base64,${buffer.toString('base64')}`;
+      return brandLogoCache;
+    } catch (error) {
+      logger.warn(`PM Surya Ghar logo could not be read from ${candidate}: ${error.message}`);
+    }
+  }
+
+  logger.warn('PM Surya Ghar logo not found - the business sheet prints the tagline without it');
   return null;
 };
 
@@ -185,6 +236,37 @@ const buildCss = (fontSizePt) => `
   .boq .total-label { text-align: center; font-weight: bold; }
   .boq .total-amount { text-align: right; font-weight: bold; }
 
+  /* Business sheet: the line number, the specification column and the plant
+     section headings. */
+  /* Business sheet only: the PM Surya Ghar emblem and the vendor wording that
+     sits under it, between the company block and the Sulekha logo. */
+  .hdr-brand-cell { text-align: center; vertical-align: middle; padding: 0.8mm; }
+  .hdr-brand-cell img { width: 13mm; height: auto; display: block; margin: 0 auto 1mm; }
+  .brand-tagline {
+    font-size: 0.92em;
+    font-weight: bold;
+    line-height: 1.25;
+    text-align: center;
+    padding: 0 0.8mm;
+  }
+
+  /* A heading must never be the last thing on a page with its text overleaf —
+     "Terms & Condition:" was landing alone at the foot of page one. */
+  .section-heading { break-after: avoid; page-break-after: avoid; }
+  .boq .col-sl { text-align: center; }
+  .boq .col-spec { text-align: left; }
+  .boq .section-row td {
+    background: #ececec;
+    font-weight: bold;
+    text-align: left;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  /* Keep a line, its section heading and the sub-total cell together when the
+     sheet runs onto a second page. The browser repeats the column header
+     automatically because thead is a table-header-group. */
+  .boq tbody tr { break-inside: avoid; page-break-inside: avoid; }
+
   .terms p { margin: 0 0 1.15mm; text-align: justify; }
   .footer-table td { border: none; padding: 0; vertical-align: top; }
   .footer-table .inner td { border: none; padding: 0.4mm 0; }
@@ -250,6 +332,93 @@ const renderItemRows = (items, amountText) => {
     .join('');
 };
 
+/**
+ * Group BOQ lines into the plant sections a business sheet prints.
+ *
+ * A section is a run of consecutive lines sharing the same `section` label —
+ * that is the layout the project sheets use ("5KWP SOLAR POWER PLANT (ON-GRID)"
+ * then "2KWP SOLAR POWER PLANT (OFF-GRID)"). Lines carrying no label gather into
+ * one unnamed group so their money still prints somewhere.
+ */
+const groupIntoSections = (items) => {
+  const groups = [];
+  for (const item of items) {
+    const label = String(item.section ?? '').trim();
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(item);
+    else groups.push({ label, items: [item] });
+  }
+  return groups;
+};
+
+/**
+ * What a section is worth.
+ *
+ * The printed project sheets carry one figure per section, not per line — the
+ * price sits in a cell merged down the section's rows. So the figure is the sum
+ * of whatever amounts the section's lines carry: a single lump typed against one
+ * line and a fully priced section both come out right. A section with no amounts
+ * at all prints no figure rather than a misleading zero.
+ */
+const sectionTotal = (items) => {
+  const values = items
+    .map((item) => item.amount)
+    .filter((value) => value !== null && value !== undefined && Number.isFinite(Number(value)));
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + Number(value), 0);
+};
+
+/**
+ * Business sheet rows: SL NO | Description | Specification | Brand/Model |
+ * Unit | Quantity | Amount.
+ *
+ * The line number runs continuously across sections, 1..n, as on the sheet.
+ */
+const renderSectionedItemRows = (items) => {
+  const groups = groupIntoSections(items);
+  if (groups.length === 0) {
+    groups.push({ label: '', items: [{ description: '', specification: '', brandModel: '', qty: '', unit: '' }] });
+  }
+
+  let serial = 0;
+
+  return groups
+    .map((group) => {
+      const heading = group.label
+        ? `<tr class="section-row"><td colspan="7">${escapeHtml(group.label)}</td></tr>`
+        : '';
+
+      const total = sectionTotal(group.items);
+      const totalText = total === null ? '' : formatQuotationAmount(total);
+
+      const rows = group.items
+        .map((item, index) => {
+          serial += 1;
+          const amountCell =
+            index === 0
+              ? `<td class="col-amount merged-amount" rowspan="${group.items.length}">${escapeHtml(
+                  totalText
+                )}</td>`
+              : '';
+
+          return `
+      <tr>
+        <td class="col-sl">${serial}</td>
+        <td class="col-desc">${escapeHtml(item.description)}</td>
+        <td class="col-spec">${escapeHtml(item.specification)}</td>
+        <td class="col-mid">${escapeHtml(item.brandModel)}</td>
+        <td class="col-unit">${item.unit ? escapeHtml(item.unit) : ''}</td>
+        <td class="col-qty">${escapeHtml(formatQty(item.qty))}</td>
+        ${amountCell}
+      </tr>`;
+        })
+        .join('');
+
+      return heading + rows;
+    })
+    .join('');
+};
+
 /** 6 -> "6", 1.5 -> "1.5" */
 const formatQty = (value) => {
   const n = Number(value);
@@ -279,7 +448,25 @@ export const buildQuotationHTML = (quotation = {}, options = {}) => {
   const shipTo = quotation.shipTo || {};
 
   const amount = quotation.amount === null || quotation.amount === undefined ? '' : formatQuotationAmount(quotation.amount);
-  const amountLabel = quotation.amountIncludesGST === false ? 'TOTAL' : 'TOTAL Including GST';
+
+  /*
+   * Which of the two sheets this is. The domestic sheet has one fixed heading
+   * and an all-in total; the business sheet has its own heading, a tagline and
+   * a total struck before tax (the rate is stated in its terms).
+   */
+  const isBusinessSheet = quotation.quotationType === 'partner';
+  const documentTitle = isBusinessSheet
+    ? company.partnerTitle || DEFAULT_PARTNER_TITLE
+    : company.quotationTitle || 'Quotation for PM Surya Ghar Muft Bijli Yojana';
+  const documentTagline = isBusinessSheet ? company.tagline || DEFAULT_PARTNER_TAGLINE : '';
+
+  const amountLabel = isBusinessSheet
+    ? quotation.amountIncludesGST === true
+      ? 'TOTAL AMOUNT Including GST'
+      : 'TOTAL AMOUNT'
+    : quotation.amountIncludesGST === false
+      ? 'TOTAL'
+      : 'TOTAL Including GST';
 
   const addressLines = (company.addressLines || []).filter(Boolean);
   const phoneAndEmail = [company.phone, company.email].filter(Boolean).join(', ');
@@ -298,9 +485,85 @@ export const buildQuotationHTML = (quotation = {}, options = {}) => {
     shipTo.phone ? `Phone No - ${shipTo.phone}` : null,
   ].filter((line) => line && String(line).trim());
 
+  /*
+   * The header block is seven rows: title, company, name/GSTN, address, locality,
+   * phone, quote number. Both merged cells on the right run down all seven, so
+   * the rowspan is the same for either sheet.
+   *
+   * A business sheet carries one more merged cell between the company block and
+   * the Sulekha logo — the PM Surya Ghar emblem with its "Empanelled Vendor"
+   * wording, which is how the manual project sheets are laid out.
+   */
+  const headerRowCount = 7;
   const logoCell = options.logoDataUri
-    ? `<td class="hdr-logo-cell" rowspan="7"><img src="${options.logoDataUri}" alt=""></td>`
-    : '<td class="hdr-logo-cell" rowspan="7"></td>';
+    ? `<td class="hdr-logo-cell" rowspan="${headerRowCount}"><img src="${options.logoDataUri}" alt=""></td>`
+    : `<td class="hdr-logo-cell" rowspan="${headerRowCount}"></td>`;
+
+  const brandCell = isBusinessSheet
+    ? `<td class="hdr-brand-cell" rowspan="${headerRowCount}">
+      ${options.brandLogoDataUri ? `<img src="${options.brandLogoDataUri}" alt="">` : ''}
+      ${documentTagline ? `<div class="brand-tagline">${escapeHtml(documentTagline)}</div>` : ''}
+    </td>`
+    : '';
+
+  /*
+   * The BOQ block, built separately because the two sheets are genuinely
+   * different tables and inlining both would be unreadable.
+   *
+   * Domestic: Description | Brand/Model | Quantity | Unit | Amount, with one
+   * figure merged across the whole table (or per line when lines are priced).
+   *
+   * Business: SL NO | Description | Specification | Brand/Model | Unit |
+   * Quantity | Amount, grouped into the named plant sections, each carrying its
+   * own figure merged down that section's rows.
+   */
+  const boqMarkup = isBusinessSheet
+    ? `<div class="section-heading">Bill of Quantities (BOQ)</div>
+  <table class="boq">
+    <colgroup>
+      <col style="width:6%"><col style="width:26%"><col style="width:28%"><col style="width:15%"><col style="width:8%"><col style="width:7%"><col style="width:10%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>SL NO</th>
+        <th>Description</th>
+        <th>Specification</th>
+        <th>Brand/Model</th>
+        <th>Unit</th>
+        <th>Quantity</th>
+        <th>Amount (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${renderSectionedItemRows(items)}
+      <tr>
+        <td colspan="6" class="total-label">${escapeHtml(amountLabel)}</td>
+        <td class="total-amount">${escapeHtml(amount)}</td>
+      </tr>
+    </tbody>
+  </table>`
+    : `<div class="section-heading">Bill of Quantities (BOQ)</div>
+  <table class="boq">
+    <colgroup>
+      <col style="width:44%"><col style="width:20%"><col style="width:11%"><col style="width:9%"><col style="width:16%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th>Brand/Model</th>
+        <th>Quantity</th>
+        <th>Unit</th>
+        <th>Amount (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${renderItemRows(items, amount)}
+      <tr>
+        <td colspan="4" class="total-label">${escapeHtml(amountLabel)}</td>
+        <td class="total-amount">${escapeHtml(amount)}</td>
+      </tr>
+    </tbody>
+  </table>`;
 
   const toolbar = options.includeToolbar
     ? `<div class="doc-toolbar no-print">
@@ -325,10 +588,18 @@ ${toolbar}
   <!-- ================= HEADER ================= -->
   <table class="hdr">
     <colgroup>
-      <col style="width:42%"><col style="width:8%"><col style="width:24%"><col style="width:26%">
+      ${
+        isBusinessSheet
+          // The company block keeps the width it has on the domestic sheet (42+8+24)
+          // so the heading still sets on one line; the emblem and the Sulekha logo
+          // share what is left, which is how the manual project sheets are divided.
+          ? '<col style="width:42%"><col style="width:8%"><col style="width:24%"><col style="width:13%"><col style="width:13%">'
+          : '<col style="width:42%"><col style="width:8%"><col style="width:24%"><col style="width:26%">'
+      }
     </colgroup>
     <tr>
-      <td class="doc-title" colspan="3">${escapeHtml(company.quotationTitle || 'Quotation for PM Surya Ghar Muft Bijli Yojana')}</td>
+      <td class="doc-title" colspan="3">${escapeHtml(documentTitle)}</td>
+      ${brandCell}
       ${logoCell}
     </tr>
     <tr>
@@ -383,28 +654,7 @@ ${toolbar}
   <div class="overview">${escapeHtml(quotation.systemOverview || '')}</div>
 
   <!-- ================= BOQ ================= -->
-  <div class="section-heading">Bill of Quantities (BOQ)</div>
-  <table class="boq">
-    <colgroup>
-      <col style="width:44%"><col style="width:20%"><col style="width:11%"><col style="width:9%"><col style="width:16%">
-    </colgroup>
-    <thead>
-      <tr>
-        <th>Description</th>
-        <th>Brand/Model</th>
-        <th>Quantity</th>
-        <th>Unit</th>
-        <th>Amount (₹)</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${renderItemRows(items, amount)}
-      <tr>
-        <td colspan="4" class="total-label">${escapeHtml(amountLabel)}</td>
-        <td class="total-amount">${escapeHtml(amount)}</td>
-      </tr>
-    </tbody>
-  </table>
+  ${boqMarkup}
 
   <!-- ================= TERMS ================= -->
   <div class="section-heading-black">Terms &amp; Condition:</div>
@@ -429,8 +679,16 @@ ${toolbar}
       </td>
       <td style="width:48%">
         <div class="section-heading" style="margin-top:0">Acceptance</div>
-        <div>Client Name:</div>
-        <div style="margin-top:6mm">Signature:</div>
+        ${
+          // The domestic sheet is accepted by the consumer; the project sheet is
+          // signed off by the vendor, as the manual sheets are.
+          isBusinessSheet
+            ? `<div>For ${escapeHtml(company.name || '')}</div>
+        <div style="margin-top:6mm">Authorised Signatory</div>
+        <div style="margin-top:4mm">Full Signature</div>`
+            : `<div>Client Name:</div>
+        <div style="margin-top:6mm">Signature:</div>`
+        }
       </td>
     </tr>
   </table>
@@ -532,6 +790,8 @@ export const closeBrowser = async () => {
  */
 export const renderQuotationPdf = async (quotation, options = {}) => {
   const logoDataUri = options.logoDataUri !== undefined ? options.logoDataUri : await loadLogoDataUri();
+  const brandLogoDataUri =
+    options.brandLogoDataUri !== undefined ? options.brandLogoDataUri : await loadBrandLogoDataUri();
   const browser = await getBrowser();
   let page;
 
@@ -539,11 +799,23 @@ export const renderQuotationPdf = async (quotation, options = {}) => {
     page = await browser.newPage();
     page.setDefaultTimeout(30000);
 
+    /* The page allowance follows the sheet: one page for the domestic
+       quotation, two for a multi-section business sheet. */
+    const maxPages = options.maxPages || maxPagesFor(quotation.quotationType);
+    const allowedHeightPx = PAGE_CONTENT_HEIGHT_PX * maxPages + 1;
+    const itemCount = Array.isArray(quotation.items) ? quotation.items.length : 0;
+
     let chosen = null;
     let lastHeight = 0;
 
     for (const fontSize of FONT_STEPS) {
-      const html = buildQuotationHTML(quotation, { ...options, fontSize, logoDataUri, includeToolbar: false });
+      const html = buildQuotationHTML(quotation, {
+        ...options,
+        fontSize,
+        logoDataUri,
+        brandLogoDataUri,
+        includeToolbar: false,
+      });
       await page.setContent(html, { waitUntil: 'load' });
 
       // eslint-disable-next-line no-await-in-loop
@@ -553,7 +825,7 @@ export const renderQuotationPdf = async (quotation, options = {}) => {
       });
       lastHeight = height;
 
-      if (height > 0 && height <= PAGE_CONTENT_HEIGHT_PX + 1) {
+      if (height > 0 && height <= allowedHeightPx) {
         chosen = fontSize;
         break;
       }
@@ -562,20 +834,39 @@ export const renderQuotationPdf = async (quotation, options = {}) => {
     if (chosen === null) {
       throw new ApiError(
         422,
-        'This quotation is too long to fit on a single page. Reduce the number of BOQ lines or shorten the terms.',
+        maxPages === 1
+          ? 'This quotation is too long to fit on a single page. Reduce the number of BOQ lines or shorten the terms.'
+          : `This quotation is too long to fit on ${maxPages} pages. Reduce the number of BOQ lines or shorten the terms.`,
         'QUOTATION_OVERFLOW',
         {
           contentHeightPx: Math.round(lastHeight),
           pageHeightPx: PAGE_CONTENT_HEIGHT_PX,
+          allowedPages: maxPages,
           smallestFontPt: FONT_STEPS[FONT_STEPS.length - 1],
-          itemCount: Array.isArray(quotation.items) ? quotation.items.length : 0,
+          itemCount,
         }
       );
     }
 
     const buffer = Buffer.from(await page.pdf({ printBackground: true, preferCSSPageSize: true }));
 
-    return { buffer, fontSize: chosen, contentHeightPx: Math.round(lastHeight) };
+    /*
+     * The height measurement is the control; this is the assertion on the real
+     * output, so a mis-measure can never ship a sheet that spills onto a page it
+     * was not allowed. A zero means the page tree could not be read, which is a
+     * parsing problem rather than a layout one, so it is not treated as failure.
+     */
+    const pages = countPdfPages(buffer);
+    if (pages > 0 && pages > maxPages) {
+      throw new ApiError(
+        422,
+        `This quotation rendered onto ${pages} pages but only ${maxPages} ${maxPages === 1 ? 'is' : 'are'} allowed. Reduce the number of BOQ lines or shorten the terms.`,
+        'QUOTATION_OVERFLOW',
+        { pages, allowedPages: maxPages, itemCount }
+      );
+    }
+
+    return { buffer, fontSize: chosen, contentHeightPx: Math.round(lastHeight), pages };
   } finally {
     if (page) {
       try {
@@ -601,16 +892,26 @@ export const countPdfPages = (buffer) => {
 /** The printable HTML for the /print route (and the client's iframe). */
 export const renderQuotationHtml = async (quotation, options = {}) => {
   const logoDataUri = options.logoDataUri !== undefined ? options.logoDataUri : await loadLogoDataUri();
-  return buildQuotationHTML(quotation, { ...options, logoDataUri, includeToolbar: options.includeToolbar !== false });
+  const brandLogoDataUri =
+    options.brandLogoDataUri !== undefined ? options.brandLogoDataUri : await loadBrandLogoDataUri();
+  return buildQuotationHTML(quotation, {
+    ...options,
+    logoDataUri,
+    brandLogoDataUri,
+    includeToolbar: options.includeToolbar !== false,
+  });
 };
 
 export const quotationPdfService = {
   DOC_COLORS,
   FONT_STEPS,
   PAGE_CONTENT_HEIGHT_PX,
+  MAX_PAGES,
+  maxPagesFor,
   buildQuotationHTML,
   formatDocumentDate,
   loadLogoDataUri,
+  loadBrandLogoDataUri,
   renderQuotationPdf,
   renderQuotationHtml,
   countPdfPages,

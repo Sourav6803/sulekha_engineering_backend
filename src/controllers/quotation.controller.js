@@ -31,6 +31,25 @@ export const getNextNumber = async (req, res) => {
   return ApiResponse.send(res, result, 'Next quotation number');
 };
 
+/**
+ * GET /api/v1/quotations/check-number
+ *
+ * "Is this number free?" — read-only, nothing is reserved. The New quotation
+ * form calls it while the admin edits the number, so a clash is reported while
+ * they are still looking at the field instead of after a failed save.
+ */
+export const checkNumber = async (req, res) => {
+  const result = await quotationService.checkNumber(req.query.quotationNo, {
+    issueDate: req.query.issueDate || null,
+  });
+
+  return ApiResponse.send(
+    res,
+    result,
+    result.available ? 'Quotation number is available' : 'Quotation number is not available'
+  );
+};
+
 /** GET /api/v1/quotations */
 export const listQuotations = async (req, res) => {
   const { items, pagination } = await quotationService.listQuotations(req.query);
@@ -287,6 +306,7 @@ export const confirmImport = async (req, res) => {
 export default {
   getDefaults,
   getNextNumber,
+  checkNumber,
   getQuotationPdf,
   printQuotation,
   importRegister,

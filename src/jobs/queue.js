@@ -10,33 +10,118 @@ import { installationService } from '../services/installation.service.js';
 const { Queue, Worker } = BullMQ;
 
 // ============================================
+// WORKERS ENABLED?
+// ============================================
+//
+// A BullMQ Worker polls its queue continuously — it never sits idle, even with
+// nothing to process. Against Upstash, where every command is metered and
+// blocking reads do not actually block, five idle workers consumed the entire
+// 500k/month free tier in a single day and then refused every other Redis call
+// with "max requests limit exceeded".
+//
+// None of the job producers (addPDFJob, addNotificationJob, …) are called from
+// application code yet, so the workers are dead weight. They now start only when
+// ENABLE_QUEUE_WORKERS=true, and everything below degrades to an inert stub so
+// no other module has to change.
+
+const QUEUE_WORKERS_ENABLED = config.ENABLE_QUEUE_WORKERS === true;
+
+if (!QUEUE_WORKERS_ENABLED) {
+  logger.info(
+    'BullMQ workers are disabled (ENABLE_QUEUE_WORKERS !== "true"). ' +
+      'No queue Redis connection will be opened. Set ENABLE_QUEUE_WORKERS=true to run background jobs.'
+  );
+}
+
+// ============================================
 // REDIS CONNECTION
 // ============================================
 
-const connection = new Redis({
-  host: config.BULL_REDIS_HOST || config.REDIS_HOST,
-  port: parseInt(config.BULL_REDIS_PORT || config.REDIS_PORT, 10),
-  username: config.BULL_REDIS_USERNAME || config.REDIS_USERNAME || (config.BULL_REDIS_PASSWORD || config.REDIS_PASSWORD ? 'default' : undefined),
-  password: config.BULL_REDIS_PASSWORD || config.REDIS_PASSWORD,
-  db: parseInt(config.BULL_REDIS_DB, 10),
-  tls: config.REDIS_TLS ? { servername: config.BULL_REDIS_HOST || config.REDIS_HOST, rejectUnauthorized: false } : undefined,
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-  retryStrategy: (times) => {
-    if (times > 3) {
-      logger.error(`Redis connection failed after ${times} retries`);
-      return null;
-    }
-    return Math.min(times * 100, 2000);
-  },
-});
-
-console.log('DEBUG queue.js connection DB:', connection.options.db, 'host:', connection.options.host);
+const connection = QUEUE_WORKERS_ENABLED
+  ? new Redis({
+      host: config.BULL_REDIS_HOST || config.REDIS_HOST,
+      port: parseInt(config.BULL_REDIS_PORT || config.REDIS_PORT, 10),
+      username: config.BULL_REDIS_USERNAME || config.REDIS_USERNAME || (config.BULL_REDIS_PASSWORD || config.REDIS_PASSWORD ? 'default' : undefined),
+      password: config.BULL_REDIS_PASSWORD || config.REDIS_PASSWORD,
+      db: parseInt(config.BULL_REDIS_DB, 10),
+      tls: config.REDIS_TLS ? { servername: config.BULL_REDIS_HOST || config.REDIS_HOST, rejectUnauthorized: false } : undefined,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      retryStrategy: (times) => {
+        if (times > 3) {
+          logger.error(`Redis connection failed after ${times} retries`);
+          return null;
+        }
+        return Math.min(times * 100, 2000);
+      },
+    })
+  : null;
 
 const queueOptions = {
   connection,
   skipVersionCheck: true,
 };
+
+// ============================================
+// INERT STUBS
+// ============================================
+
+/**
+ * Stand-in for a Queue. Every method a caller may reach for resolves to an
+ * empty-but-well-shaped value, so admin screens and health checks keep working
+ * instead of throwing when the workers are off.
+ */
+const createQueueStub = (name) => {
+  const warn = () => {
+    logger.warn(`Queue "${name}" is disabled — the call was ignored (ENABLE_QUEUE_WORKERS !== "true")`);
+  };
+
+  return {
+    name,
+    isStub: true,
+    add: async () => {
+      warn();
+      return null;
+    },
+    clean: async () => [],
+    close: async () => {},
+    disconnect: async () => {},
+    getJob: async () => undefined,
+    getJobs: async () => [],
+    getWaitingCount: async () => 0,
+    getActiveCount: async () => 0,
+    getCompletedCount: async () => 0,
+    getFailedCount: async () => 0,
+    getDelayedCount: async () => 0,
+    on: () => undefined,
+    once: () => undefined,
+    off: () => undefined,
+  };
+};
+
+/**
+ * Stand-in for a Worker. `on`/`close` are the only members the rest of this
+ * module touches, so a no-op object is enough to keep the wiring downstream
+ * intact while nothing polls Redis.
+ */
+const createWorkerStub = (name) => ({
+  name,
+  isStub: true,
+  on: () => undefined,
+  once: () => undefined,
+  off: () => undefined,
+  close: async () => {},
+  pause: async () => {},
+  resume: async () => {},
+  isRunning: () => false,
+  run: async () => {},
+});
+
+const createQueue = (name, options) =>
+  QUEUE_WORKERS_ENABLED ? new Queue(name, options) : createQueueStub(name);
+
+const createWorker = (name, processor, options) =>
+  QUEUE_WORKERS_ENABLED ? new Worker(name, processor, options) : createWorkerStub(name);
 
 const workerOptions = {
   connection,
@@ -48,7 +133,7 @@ const workerOptions = {
 // ============================================
 
 // PDF Generation Queue
-export const pdfQueue = new Queue('pdf-generation', {
+export const pdfQueue = createQueue('pdf-generation', {
   ...queueOptions,
   defaultJobOptions: {
     attempts: 3,
@@ -68,7 +153,7 @@ export const pdfQueue = new Queue('pdf-generation', {
 });
 
 // Low Stock Alert Queue
-export const lowStockQueue = new Queue('low-stock-alerts', {
+export const lowStockQueue = createQueue('low-stock-alerts', {
   ...queueOptions,
   defaultJobOptions: {
     attempts: 3,
@@ -86,7 +171,7 @@ export const lowStockQueue = new Queue('low-stock-alerts', {
 });
 
 // Notification Queue
-export const notificationQueue = new Queue('notifications', {
+export const notificationQueue = createQueue('notifications', {
   ...queueOptions,
   defaultJobOptions: {
     attempts: 5,
@@ -104,7 +189,7 @@ export const notificationQueue = new Queue('notifications', {
 });
 
 // Report Generation Queue
-export const reportQueue = new Queue('reports', {
+export const reportQueue = createQueue('reports', {
   ...queueOptions,
   defaultJobOptions: {
     attempts: 2,
@@ -122,7 +207,7 @@ export const reportQueue = new Queue('reports', {
 });
 
 // Email Queue
-export const emailQueue = new Queue('emails', {
+export const emailQueue = createQueue('emails', {
   ...queueOptions,
   defaultJobOptions: {
     attempts: 3,
@@ -144,7 +229,7 @@ export const emailQueue = new Queue('emails', {
 // ============================================
 
 // PDF Generation Worker
-export const pdfWorker = new Worker(
+export const pdfWorker = createWorker(
   'pdf-generation',
   async (job) => {
     const { installationId, type, options } = job.data;
@@ -204,7 +289,7 @@ export const pdfWorker = new Worker(
 );
 
 // Low Stock Alert Worker
-export const lowStockWorker = new Worker(
+export const lowStockWorker = createWorker(
   'low-stock-alerts',
   async (job) => {
     const { materialId, currentStock, reorderLevel, checkAll } = job.data;
@@ -275,7 +360,7 @@ export const lowStockWorker = new Worker(
 );
 
 // Notification Worker
-export const notificationWorker = new Worker(
+export const notificationWorker = createWorker(
   'notifications',
   async (job) => {
     const { type, data, channels } = job.data;
@@ -339,7 +424,7 @@ export const notificationWorker = new Worker(
 );
 
 // Report Generation Worker
-export const reportWorker = new Worker(
+export const reportWorker = createWorker(
   'reports',
   async (job) => {
     const { type, options } = job.data;
@@ -388,7 +473,7 @@ export const reportWorker = new Worker(
 );
 
 // Email Worker
-export const emailWorker = new Worker(
+export const emailWorker = createWorker(
   'emails',
   async (job) => {
     const { to, subject, template, data } = job.data;
@@ -522,6 +607,13 @@ notificationWorker.on('error', (err) => {
  * Initialize all queues and workers
  */
 export const initializeQueue = async () => {
+  // Skipped entirely when the workers are off: with nothing draining the
+  // queues, cleaning them is pure Redis spend at every boot.
+  if (!QUEUE_WORKERS_ENABLED) {
+    logger.info('Queue initialisation skipped — background workers are disabled');
+    return false;
+  }
+
   try {
     // Clean up old jobs
     await pdfQueue.clean(86400000, 1000); // Clean jobs older than 24 hours
@@ -556,7 +648,8 @@ export const closeQueue = async () => {
     await emailWorker.close();
     
     if (queueScheduler) await queueScheduler.close();
-    await connection.quit();
+    // No connection exists when the workers are disabled.
+    if (connection) await connection.quit();
 
     logger.info('✅ All queues and workers closed successfully');
     return true;
@@ -626,6 +719,13 @@ export const addPDFJob = async (installationId, type = 'bom', options = {}) => {
       }
     );
 
+    // `job` is null when the queue system is disabled — say so rather than
+    // reporting a job that was never queued.
+    if (!job) {
+      logger.warn(`PDF job for installation ${installationId} was not queued (background workers are disabled)`);
+      return null;
+    }
+
     logger.info(`PDF job ${job.id} added to queue for installation ${installationId}`);
     return job;
   } catch (error) {
@@ -662,6 +762,11 @@ export const addLowStockCheckJob = async (materialId = null, checkAll = false) =
       }
     );
 
+    if (!job) {
+      logger.warn('Low stock check job was not queued (background workers are disabled)');
+      return null;
+    }
+
     logger.info(`Low stock check job ${job.id} added to queue`);
     return job;
   } catch (error) {
@@ -688,6 +793,11 @@ export const addNotificationJob = async (type, data, channels = ['in_app']) => {
       }
     );
 
+    if (!job) {
+      logger.warn(`Notification job (${type}) was not queued (background workers are disabled)`);
+      return null;
+    }
+
     logger.info(`Notification job ${job.id} added to queue`);
     return job;
   } catch (error) {
@@ -712,6 +822,11 @@ export const addReportJob = async (type, options = {}) => {
         jobId: `report-${type}-${Date.now()}`,
       }
     );
+
+    if (!job) {
+      logger.warn(`Report job (${type}) was not queued (background workers are disabled)`);
+      return null;
+    }
 
     logger.info(`Report job ${job.id} added to queue`);
     return job;
@@ -739,6 +854,11 @@ export const addEmailJob = async (to, subject, template, data = {}) => {
         jobId: `email-${to}-${Date.now()}`,
       }
     );
+
+    if (!job) {
+      logger.warn(`Email job for ${to} was not queued (background workers are disabled)`);
+      return null;
+    }
 
     logger.info(`Email job ${job.id} added to queue for ${to}`);
     return job;

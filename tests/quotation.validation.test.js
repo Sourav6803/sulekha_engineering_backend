@@ -163,17 +163,25 @@ test('unknown keys are stripped by the middleware, so server-owned fields cannot
   // Verified behaviour: stripUnknown wins, unknown keys are REMOVED from
   // req.body. Server-owned fields are therefore dropped before the controller
   // ever sees them - and the service whitelist is the second layer of defence.
+  //
+  // `quotationNo` is the one deliberate exception: the office may type the
+  // number instead of taking the next one, so it is declared on the create
+  // schema. Everything else the server owns - the sequence, the financial year,
+  // the soft-delete flag, the frozen company snapshot - is still stripped.
+  // (Typed-number behaviour is covered in quotationNumberOverride.test.js.)
   const payload = run(schemas.createQuotationValidation, {
     systemSizeKW: 3,
     quotationNo: 'SE/PMSGY/2026-27/999',
     quotationSeq: 999,
+    financialYear: '2099-00',
     isActive: false,
     companySnapshot: { name: 'Hacked' },
   });
 
   assert.equal(payload.error, undefined);
-  assert.equal(payload.value.quotationNo, undefined);
+  assert.equal(payload.value.quotationNo, 'SE/PMSGY/2026-27/999'); // client-settable by design
   assert.equal(payload.value.quotationSeq, undefined);
+  assert.equal(payload.value.financialYear, undefined);
   assert.equal(payload.value.isActive, undefined);
   assert.equal(payload.value.companySnapshot, undefined);
   assert.equal(payload.value.systemSizeKW, 3); // declared fields survive

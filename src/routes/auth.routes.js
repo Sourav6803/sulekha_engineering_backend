@@ -32,11 +32,18 @@ router.post(
   asyncHandler(login)
 );
 
+/**
+ * Creating a user is an admin action.
+ *
+ * This route used to be fully public — anyone who found the URL could mint
+ * themselves an account. It is now gated the same way as /agents; use
+ * POST /api/v1/agents for field agents, which also emails the credentials.
+ */
 router.post(
   '/register',
-  // authRateLimiter,
-  // authenticate,
-  // authorize('admin'),
+  authRateLimiter,
+  authenticate,
+  authorize('admin'),
   validate(registerValidation),
   asyncHandler(register)
 );

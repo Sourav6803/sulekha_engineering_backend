@@ -8,6 +8,7 @@ import {
   financialYearOf,
   financialYearRange,
   buildQuotationNo,
+  parseQuotationNo,
   normaliseSchemeCode,
   isValidSchemeCode,
   calculatePanelQty,
@@ -21,6 +22,17 @@ import {
   buildCompanySnapshot,
 } from '../utils/quotationDefaults.js';
 import { uploadToCloudinaryDetailed, deleteFromCloudinary } from './storage.service.js';
+import { MAX_ITEM_LINES } from '../models/Quotation.js';
+import {
+  QUOTATION_TYPES,
+  DEFAULT_QUOTATION_TYPE,
+  DEFAULT_PARTNER_TITLE,
+  DEFAULT_PARTNER_TAGLINE,
+  rulesForType,
+} from '../data/quotationTypes.js';
+
+/** Lines the domestic sheet is kept to. One flat table has to fit one page. */
+const DEFAULT_ITEM_LIMIT = 14;
 
 /**
  * Quotation Service
@@ -61,7 +73,7 @@ const CREATABLE_FIELDS = [
   // 'terms' and 'paymentTerms' are fixed company-wide and are never written by
   // a client - they are copied from the CompanyProfile at creation time.
   'issueDate', 'validUntil', 'validityDays', 'status', 'notes',
-  'schemeCode', 'schemeLabel',
+  'schemeCode', 'schemeLabel', 'quotationType',
 ];
 
 /** Sub-documents are managed through their own endpoints, never by mass assignment. */
@@ -86,6 +98,9 @@ const normaliseItems = (items) => {
   return items.map((raw, index) => ({
     description: String(raw?.description ?? '').trim(),
     brandModel: String(raw?.brandModel ?? '').trim(),
+    // Partner/project sheet columns; blank on the domestic sheet.
+    specification: String(raw?.specification ?? '').trim(),
+    section: String(raw?.section ?? '').trim(),
     qty: Number(raw?.qty),
     unit: raw?.unit ? String(raw.unit).trim().toLowerCase() : null,
     amount: raw?.amount === undefined || raw?.amount === null || raw?.amount === '' ? null : Number(raw.amount),
@@ -112,8 +127,22 @@ export const quotationService = {
   },
 
   /** Reject a BOQ that cannot fit the configured single page. */
-  assertItemLimit(items, profile) {
-    const limit = profile?.quotationItemLimit || 14;
+  /**
+   * How many BOQ lines this quotation type may carry.
+   *
+   * The domestic sheet is a single flat table that has to fit one page, so the
+   * company setting is respected. A partner sheet is a multi-section project BOQ
+   * — the Bank of Baroda one alone runs 29 lines across two sections — so it is
+   * allowed the schema's hard ceiling instead.
+   */
+  itemLimitFor(profile, quotationType = DEFAULT_QUOTATION_TYPE) {
+    const configured = Number(profile?.quotationItemLimit) || DEFAULT_ITEM_LIMIT;
+    if (quotationType === 'partner') return Math.max(configured, MAX_ITEM_LINES);
+    return configured;
+  },
+
+  assertItemLimit(items, profile, quotationType = DEFAULT_QUOTATION_TYPE) {
+    const limit = this.itemLimitFor(profile, quotationType);
     if (Array.isArray(items) && items.length > limit) {
       throw new ApiError(
         422,
@@ -178,6 +207,116 @@ export const quotationService = {
     };
   },
 
+  /**
+   * Can this quotation number be used? Read-only — nothing is reserved, so two
+   * admins can both be told "available" and the unique indexes still have the
+   * final word at save time.
+   *
+   * Two separate things can make a number unusable, and the answer has to say
+   * which one it was:
+   *
+   *  1. the number itself is on a live quotation, and
+   *  2. the **serial** inside it is already taken for that financial year.
+   *
+   * The second is the one that surprises people: the sequence is global across
+   * schemes by design, so SE/PMSGY/2026-27/45 and SE/BOB/2026-27/45 are the same
+   * serial 45. A number can look perfectly free and still be refused by the
+   * (financialYear, quotationSeq) index because a different scheme got there
+   * first — so the check reports the holder by name instead of leaving the admin
+   * to guess.
+   *
+   * @param {String} quotationNo - As typed, e.g. "SE/BOB/2026-27/45".
+   * @param {Object} [options]
+   * @param {Date|String} [options.issueDate] - When given, the number's financial
+   *   year must match the one that date falls in.
+   * @returns {Promise<Object>} `{ available, reason?, message, quotationNo, ... }`
+   */
+  async checkNumber(quotationNo, { issueDate = null } = {}) {
+    const profile = await this.resolveProfile();
+    const raw = String(quotationNo || '').trim();
+    const example = `${profile.quotationNumberPrefix || 'SE'}/${
+      profile.defaultSchemeCode || 'PMSGY'
+    }/${financialYearOf(new Date())}/45`;
+
+    if (!raw) {
+      return {
+        quotationNo: '',
+        available: false,
+        reason: 'required',
+        message: 'Enter a quotation number.',
+      };
+    }
+
+    const parsed = parseQuotationNo(raw);
+    if (!parsed) {
+      return {
+        quotationNo: raw,
+        available: false,
+        reason: 'format',
+        message: `"${raw}" is not a quotation number. Use the form ${example}.`,
+      };
+    }
+
+    const expectedYear = issueDate ? financialYearOf(issueDate) : null;
+    if (expectedYear && parsed.financialYear !== expectedYear) {
+      return {
+        quotationNo: parsed.quotationNo,
+        available: false,
+        reason: 'financial_year',
+        financialYear: parsed.financialYear,
+        expectedFinancialYear: expectedYear,
+        message: `This number belongs to ${parsed.financialYear}, but the quotation date falls in ${expectedYear}. The register keeps a separate series for each financial year.`,
+      };
+    }
+
+    const [byNumber, bySequence] = await Promise.all([
+      Quotation.findOne({ quotationNo: parsed.quotationNo, isActive: true })
+        .select('quotationNo customerName issueDate')
+        .lean(),
+      Quotation.findOne({
+        financialYear: parsed.financialYear,
+        quotationSeq: parsed.seq,
+        isActive: true,
+      })
+        .select('quotationNo customerName issueDate')
+        .lean(),
+    ]);
+
+    if (byNumber) {
+      return {
+        quotationNo: parsed.quotationNo,
+        available: false,
+        reason: 'duplicate',
+        existing: { ...byNumber, _id: String(byNumber._id) },
+        message: `${parsed.quotationNo} is already saved${
+          byNumber.customerName ? ` for ${byNumber.customerName}` : ''
+        }. Please use another quotation number.`,
+      };
+    }
+
+    if (bySequence) {
+      return {
+        quotationNo: parsed.quotationNo,
+        available: false,
+        reason: 'sequence_taken',
+        existing: { ...bySequence, _id: String(bySequence._id) },
+        message: `Serial ${parsed.seq} of ${parsed.financialYear} is already used by ${bySequence.quotationNo}${
+          bySequence.customerName ? ` (${bySequence.customerName})` : ''
+        }. Please use another quotation number.`,
+      };
+    }
+
+    return {
+      quotationNo: parsed.quotationNo,
+      available: true,
+      reason: null,
+      quotationSeq: parsed.seq,
+      financialYear: parsed.financialYear,
+      schemeCode: parsed.schemeCode,
+      message: `${parsed.quotationNo} is free.`,
+    };
+  },
+
   // ==========================================================================
   // create
   // ==========================================================================
@@ -188,14 +327,41 @@ export const quotationService = {
   async getDefaults() {
     const profile = await this.resolveProfile();
 
+    const consumerTitle = profile.quotationTitle || 'Quotation for PM Surya Ghar Muft Bijli Yojana';
+    const partnerTitle = profile.partnerTitle || DEFAULT_PARTNER_TITLE;
+
     return {
-      quotationItemLimit: profile.quotationItemLimit ?? 14,
+      quotationItemLimit: profile.quotationItemLimit ?? DEFAULT_ITEM_LIMIT,
       defaultPanelWp: profile.defaultPanelWp ?? 610,
       panelSizingFactor: profile.panelSizingFactor ?? 1.2,
       validityDays: profile.validityDays ?? 7,
       defaultSchemeCode: profile.defaultSchemeCode || 'PMSGY',
       quotationNumberPrefix: profile.quotationNumberPrefix || 'SE',
-      quotationTitle: profile.quotationTitle || 'Quotation for PM Surya Ghar Muft Bijli Yojana',
+      quotationTitle: consumerTitle,
+      partnerTitle,
+      /**
+       * Both sheets described side by side, so the form can switch between them
+       * without another round trip. Every text and toggle the printed document
+       * depends on is here.
+       */
+      quotationTypes: QUOTATION_TYPES.map((type) => {
+        const rules = rulesForType(type);
+        const isPartnerType = type === 'partner';
+        return {
+          value: type,
+          label: rules.label,
+          title: isPartnerType ? partnerTitle : consumerTitle,
+          tagline: isPartnerType ? profile.partnerTagline || DEFAULT_PARTNER_TAGLINE : '',
+          showSerialColumn: rules.showSerialColumn,
+          showSpecificationColumn: rules.showSpecificationColumn,
+          showSections: rules.showSections,
+          amountIncludesGST: rules.amountIncludesGST,
+          acceptance: rules.acceptance,
+          itemLimit: this.itemLimitFor(profile, type),
+          terms: buildDefaultTerms(profile, type),
+          paymentTerms: buildDefaultPaymentTerms(profile, type),
+        };
+      }),
       companyName: profile.name || '',
       schemes: (profile.schemes || [])
         .filter((scheme) => scheme.isActive !== false)
@@ -227,7 +393,39 @@ export const quotationService = {
       throw ApiError.validation('Customer name is required', { customerName: 'Customer name is required' });
     }
 
-    const schemeCode = normaliseSchemeCode(withCustomer.schemeCode) || profile.defaultSchemeCode || 'PMSGY';
+    /*
+     * A typed number wins over the allocated one.
+     *
+     * Numbers are normally taken from the sequence, but the office also issues
+     * them by hand: a solar-partner quotation carries its own scheme
+     * (SE/BOB/2026-27/45), and by the time it is filed the bank's printed copy
+     * already shows that number, so the record has to match it. A typed number is
+     * therefore parsed back into its parts — the scheme it names becomes the
+     * quotation's scheme, the serial it names becomes its sequence — so the
+     * register, the duplicate check and the printed document all agree.
+     *
+     * The financial year is the one part that is refused rather than adopted: the
+     * year follows the issue date everywhere else in this module, and a number
+     * from another year would file the serial under the wrong year in the
+     * register. Saying so is better than filing it silently.
+     */
+    const requestedNo = String(payload.quotationNo || '').trim();
+    const requested = requestedNo ? parseQuotationNo(requestedNo) : null;
+
+    if (requestedNo && !requested) {
+      throw ApiError.validation(`"${requestedNo}" is not a quotation number.`, {
+        quotationNo: 'Use the form SE/PMSGY/2026-27/45.',
+      });
+    }
+    if (requested && requested.financialYear !== financialYear) {
+      throw ApiError.validation(
+        `${requested.quotationNo} belongs to ${requested.financialYear}, but this quotation is dated in ${financialYear}.`,
+        { quotationNo: `The serial must belong to ${financialYear}.` }
+      );
+    }
+
+    const schemeCode =
+      requested?.schemeCode || normaliseSchemeCode(withCustomer.schemeCode) || profile.defaultSchemeCode || 'PMSGY';
     if (!isValidSchemeCode(schemeCode)) {
       throw ApiError.validation(`Invalid scheme code: "${withCustomer.schemeCode}"`, {
         schemeCode: 'Scheme code must be 2-12 alphanumeric characters',
@@ -235,6 +433,13 @@ export const quotationService = {
     }
     const schemeLabel =
       withCustomer.schemeLabel || (profile.schemes || []).find((s) => s.code === schemeCode)?.label || '';
+
+    // Which sheet this is. The domestic template is the default, so every
+    // existing caller and every imported record keeps behaving as before.
+    const quotationType = QUOTATION_TYPES.includes(withCustomer.quotationType)
+      ? withCustomer.quotationType
+      : DEFAULT_QUOTATION_TYPE;
+    const typeRules = rulesForType(quotationType);
 
     // Panel sizing: the caller's value wins, otherwise suggest one from the
     // company's panel watt-peak and DC oversizing factor.
@@ -249,6 +454,7 @@ export const quotationService = {
     const items = hasItems
       ? normaliseItems(withCustomer.items)
       : buildDefaultItems(profile, {
+          quotationType,
           systemSizeKW: withCustomer.systemSizeKW,
           panelWp,
           panelQty,
@@ -257,19 +463,23 @@ export const quotationService = {
           inverterBrand: withCustomer.inverterBrand,
           structureType: withCustomer.structureType,
         });
-    this.assertItemLimit(items, profile);
+    this.assertItemLimit(items, profile, quotationType);
 
     const inverterCapacityKW = withCustomer.inverterCapacityKW ?? withCustomer.systemSizeKW ?? null;
 
-    const amount = withCustomer.amount !== undefined ? withCustomer.amount : this.sumItemAmounts(items);
-    // Fixed company-wide terms, copied onto the quotation so a reprint shows the
-    // wording that applied on the day it was issued.
-    const terms = buildDefaultTerms(profile);
-    const paymentTerms = buildDefaultPaymentTerms(profile);
+    const amount =
+      withCustomer.amount !== undefined
+        ? withCustomer.amount
+        : this.sumItemAmounts(items);
+    // Fixed company-wide terms for this sheet, copied onto the quotation so a
+    // reprint shows the wording that applied on the day it was issued.
+    const terms = buildDefaultTerms(profile, quotationType);
+    const paymentTerms = buildDefaultPaymentTerms(profile, quotationType);
 
     const systemOverview =
       withCustomer.systemOverview ||
       buildSystemOverview(profile, {
+        quotationType,
         systemSizeKW: withCustomer.systemSizeKW,
         inverterCapacityKW,
         structureType: withCustomer.structureType || profile.defaultStructure,
@@ -278,6 +488,7 @@ export const quotationService = {
     const baseDoc = {
       schemeCode,
       schemeLabel,
+      quotationType,
       customer: withCustomer.customer || null,
       customerName: String(withCustomer.customerName).trim(),
       consumerId: withCustomer.consumerId || '',
@@ -297,11 +508,17 @@ export const quotationService = {
       systemOverview,
       items,
       amount: amount ?? null,
-      amountIncludesGST: withCustomer.amountIncludesGST !== false,
+      // The domestic sheet quotes a GST-inclusive figure; the project sheet
+      // quotes before tax and states the rate in its terms. The caller may
+      // always override.
+      amountIncludesGST:
+        withCustomer.amountIncludesGST !== undefined
+          ? withCustomer.amountIncludesGST
+          : typeRules.amountIncludesGST,
       amountInWords: withCustomer.amountInWords || (amount !== null && amount !== undefined ? amountInWords(amount) : ''),
       terms,
       paymentTerms,
-      companySnapshot: buildCompanySnapshot(profile),
+      companySnapshot: buildCompanySnapshot(profile, quotationType),
       issueDate,
       validUntil: withCustomer.validUntil ? new Date(withCustomer.validUntil) : null,
       validityDays: withCustomer.validityDays ?? profile.validityDays ?? null,
@@ -312,6 +529,47 @@ export const quotationService = {
     };
 
     let lastError = null;
+
+    /*
+     * A typed number is used exactly as given — one attempt, no retry.
+     *
+     * The retry loop below exists to race for the next *free* serial. Here there
+     * is nothing to race for: retrying would issue the quotation under a number
+     * other than the one the office wrote on the consumer's paper copy, which is
+     * worse than refusing the save.
+     */
+    if (requested) {
+      try {
+        const created = await Quotation.create({
+          ...baseDoc,
+          quotationNo: requested.quotationNo,
+          quotationSeq: requested.seq,
+          financialYear,
+        });
+
+        logger.info(
+          `Quotation created with a typed number: ${requested.quotationNo} for ${created.customerName}`
+        );
+
+        return { quotation: created.toObject({ virtuals: true }), attempts: 1 };
+      } catch (error) {
+        if (!isDuplicateKeyError(error)) {
+          if (error instanceof ApiError) throw error;
+          logger.error('Quotation creation failed:', error);
+          throw error;
+        }
+
+        // Someone took it between the availability check and this save, or the
+        // clash is on the serial rather than the number — either way, name the
+        // holder instead of answering "duplicate key".
+        const verdict = await this.checkNumber(requested.quotationNo, { issueDate });
+        throw ApiError.conflict(
+          verdict.available
+            ? `${requested.quotationNo} was taken a moment ago. Please use another quotation number.`
+            : verdict.message
+        );
+      }
+    }
 
     for (let attempt = 1; attempt <= MAX_ALLOCATION_ATTEMPTS; attempt += 1) {
       const quotationSeq = (await Quotation.getMaxSequence(financialYear)) + 1;
@@ -575,14 +833,37 @@ export const quotationService = {
     delete input.schemeCode;
     delete input.schemeLabel;
 
+    /*
+     * The sheet itself may be corrected before anything is printed - a domestic
+     * quotation that turns out to be a partner order, or the reverse.
+     *
+     * Terms and payment terms are never written by a client: they are fixed
+     * company-wide per sheet, so switching type re-copies them from the profile
+     * exactly the way creation does. The BOQ lines are left untouched; the
+     * caller is editing those in the same request when they need to.
+     */
+    const typeChanged = Boolean(input.quotationType) && input.quotationType !== quotation.quotationType;
+    const effectiveType = input.quotationType || quotation.quotationType;
+    let updateProfile = null;
+
+    if (typeChanged) {
+      updateProfile = await this.resolveProfile();
+      input.terms = buildDefaultTerms(updateProfile, effectiveType);
+      input.paymentTerms = buildDefaultPaymentTerms(updateProfile, effectiveType);
+    }
+
     const previousValues = {};
     const changedFields = [];
     const wasConverted = quotation.status === 'converted' || Boolean(quotation.convertedInstallation);
 
-    if (Array.isArray(input.items)) {
-      const items = normaliseItems(input.items);
-      this.assertItemLimit(items, await this.resolveProfile());
-      input.items = items;
+    // Checked whenever the lines change *or* the sheet does — switching a
+    // 29-line project BOQ to the domestic sheet has to be refused, since that
+    // sheet has to fit one page.
+    if (Array.isArray(input.items) || typeChanged) {
+      if (!updateProfile) updateProfile = await this.resolveProfile();
+      const items = Array.isArray(input.items) ? normaliseItems(input.items) : quotation.items;
+      this.assertItemLimit(items, updateProfile, effectiveType);
+      if (Array.isArray(input.items)) input.items = items;
     }
 
     // terms / paymentTerms are not updatable - they are fixed company-wide.
@@ -609,6 +890,7 @@ export const quotationService = {
     if (input.systemOverview === undefined && (input.systemSizeKW !== undefined || input.structureType !== undefined || input.inverterCapacityKW !== undefined)) {
       const profile = await this.resolveProfile();
       input.systemOverview = buildSystemOverview(profile, {
+        quotationType: effectiveType,
         systemSizeKW: input.systemSizeKW ?? quotation.systemSizeKW,
         inverterCapacityKW: input.inverterCapacityKW ?? quotation.inverterCapacityKW ?? quotation.systemSizeKW,
         structureType: input.structureType ?? quotation.structureType,

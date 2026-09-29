@@ -1,0 +1,9 @@
+﻿
+not ok 85 - api: one agent cannot open another agent application by id
+not ok 132 - unknown keys are stripped by the middleware, so server-owned fields cannot be injected
+not ok 156 - create: server-owned fields in the body are ignored
+# tests 281
+# pass 278
+# fail 3
+
+

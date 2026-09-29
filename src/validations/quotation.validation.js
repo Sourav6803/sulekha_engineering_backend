@@ -3,11 +3,14 @@ import Joi from 'joi';
 
 const objectId = Joi.string().hex().length(24);
 
+// `kwp`, `set` and `job` come from the partner/project sheet — without them a
+// partner quotation cannot be entered (see models/Quotation.js QUOTATION_UNITS).
 const unit = Joi.string()
   .lowercase()
-  .valid('nos', 'mtr', 'kg', 'lot', 'pair', 'bag', 'roll', 'box');
+  .valid('nos', 'mtr', 'kg', 'lot', 'pair', 'bag', 'roll', 'box', 'kwp', 'set', 'job');
 
 const structureType = Joi.string().valid('high_rise', 'tin_shed', 'rcc_rooftop', 'ground_mount');
+const quotationType = Joi.string().valid('consumer', 'partner');
 const quotationStatus = Joi.string().valid('draft', 'sent', 'accepted', 'rejected', 'expired', 'converted');
 const financialYear = Joi.string().pattern(/^\d{4}-\d{2}(\d{2})?$/);
 const schemeCode = Joi.string().trim().uppercase().pattern(/^[A-Z0-9]{2,12}$/);
@@ -33,6 +36,8 @@ const itemSchema = Joi.object({
     'string.empty': 'Each BOQ line needs a description',
   }),
   brandModel: Joi.string().trim().max(120).allow(''),
+  /** Partner sheet only; blank on the domestic sheet. */
+  specification: Joi.string().trim().max(400).allow(''),
   qty: Joi.number().min(0.001).required().messages({
     'any.required': 'Each BOQ line needs a quantity',
     'number.min': 'BOQ quantity must be greater than 0',
@@ -41,6 +46,8 @@ const itemSchema = Joi.object({
   amount: Joi.number().min(0).allow(null),
   isOptional: Joi.boolean(),
   order: Joi.number().integer().min(0),
+  /** Partner sheet only — the plant section this line belongs to. */
+  section: Joi.string().trim().max(80).allow(''),
 });
 
 const shipToSchema = Joi.object({
@@ -65,7 +72,10 @@ const quotationBodyFields = {
   pincode: Joi.string().trim().max(10).allow(''),
   shipTo: shipToSchema,
 
-  systemSizeKW: Joi.number().min(0.1).max(100).messages({
+  // `null` is accepted like the sibling system fields: a business sheet is often
+  // a project to a partner, or a plain material supply, with no single kW figure
+  // and no panel count to derive from it.
+  systemSizeKW: Joi.number().min(0.1).max(100).allow(null).messages({
     'number.min': 'System size must be at least 0.1 kW',
     'number.max': 'System size cannot exceed 100 kW',
   }),
@@ -94,6 +104,8 @@ const quotationBodyFields = {
 
   schemeCode,
   schemeLabel: Joi.string().trim().max(160).allow(''),
+  /** Which sheet this is. Omitted means the domestic consumer sheet. */
+  quotationType,
 };
 
 /** validUntil may not precede issueDate — checked only when both are present. */
@@ -110,6 +122,15 @@ const assertDateOrder = (schema) =>
 export const createQuotationValidation = assertDateOrder(
   Joi.object({
     ...quotationBodyFields,
+    /**
+     * Optional, create-only: the office may type the number instead of taking the
+     * next one (a hand-issued solar-partner quotation already carries one). The
+     * service parses it for the scheme and serial, and refuses one whose financial
+     * year does not match the issue date. Deliberately NOT accepted by
+     * updateQuotationValidation — once issued, the number is what the consumer's
+     * paper copy says, and the register is keyed on it.
+     */
+    quotationNo: Joi.string().trim().max(60).allow('', null),
     customerName: quotationBodyFields.customerName,
     systemSizeKW: quotationBodyFields.systemSizeKW.required().messages({
       'any.required': 'System size (kW) is required',
@@ -158,6 +179,16 @@ export const statsValidation = Joi.object({
 
 export const nextNumberValidation = Joi.object({
   schemeCode,
+  issueDate: Joi.date(),
+});
+
+/**
+ * The availability check behind the editable number on the create form: the
+ * number as typed, and the date it is being issued on (the number's financial
+ * year has to match that date's).
+ */
+export const checkNumberValidation = Joi.object({
+  quotationNo: Joi.string().trim().min(4).max(60).required(),
   issueDate: Joi.date(),
 });
 

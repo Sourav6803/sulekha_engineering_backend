@@ -32,9 +32,14 @@ const gracefulShutdown = async (server) => {
     await disconnectDB();
     logger.info('Database disconnected');
 
-    // Close Redis connection
-    await redisQuit();
-    logger.info('Redis disconnected');
+    // Close Redis connection. Wrapped because a shutdown should still finish
+    // when Redis is unreachable or over quota.
+    try {
+      await redisQuit();
+      logger.info('Redis disconnected');
+    } catch (error) {
+      logger.warn(`Redis was already down at shutdown: ${error.message}`);
+    }
 
     // Close queue connections
     await closeQueue();
@@ -64,16 +69,33 @@ const startServer = async () => {
     // ============================================
     // CONNECT TO REDIS
     // ============================================
-    const redis = getRedis();
-    await redis.connect();
-    logger.info('✅ Redis connection established');
+    //
+    // Redis is a cache here, never the source of truth. It was previously
+    // connected inside the same try block as the database, so a Redis problem —
+    // an over-quota Upstash account replying "max requests limit exceeded", for
+    // instance — aborted startServer() and the API never listened at all.
+    // Failing to reach it now only costs us caching.
+    try {
+      const redis = getRedis();
+      await redis.connect();
+      logger.info('✅ Redis connection established');
+    } catch (error) {
+      logger.error(
+        `⚠️  Redis unavailable, continuing without cache: ${error.message}`
+      );
+    }
 
     // ============================================
     // INITIALIZE BACKGROUND JOBS
     // ============================================
-    if (config.ENABLE_BACKGROUND_JOBS) {
+    // Gated on ENABLE_QUEUE_WORKERS, which is also what stops queue.js from
+    // starting BullMQ workers at import time. See src/jobs/queue.js — those
+    // workers poll Redis continuously and will drain a metered plan.
+    if (config.ENABLE_QUEUE_WORKERS) {
       await initializeQueue();
       logger.info('✅ Queue system initialized');
+    } else {
+      logger.info('Background job workers are disabled (ENABLE_QUEUE_WORKERS is not "true")');
     }
 
     // ============================================

@@ -377,8 +377,11 @@ test('create: a different scheme changes the prefix but not the sequence', async
 });
 
 test('create: server-owned fields in the body are ignored', async () => {
+  // `quotationNo` is not in this list on purpose: since the office may type the
+  // number itself, the body value is honoured rather than ignored. That path has
+  // its own tests in quotationNumberOverride.test.js. Everything the server
+  // still owns stays ignored.
   const res = await createQuotation({
-    quotationNo: 'SE/PMSGY/2026-27/999',
     quotationSeq: 999,
     financialYear: '2099-00',
     isActive: false,

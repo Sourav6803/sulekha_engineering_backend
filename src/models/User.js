@@ -1,4 +1,5 @@
 // src/models/User.js
+import crypto from 'crypto';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
@@ -28,7 +29,9 @@ const UserSchema = new Schema({
   // Role & Permissions
   role: {
     type: String,
-    enum: ['admin', 'manager', 'warehouse_staff', 'installation_team', 'viewer'],
+    // `agent` is a field agent: signs in, sees only the applications they
+    // collected, and files a new consumer application from the consumer's house.
+    enum: ['admin', 'manager', 'agent', 'warehouse_staff', 'installation_team', 'viewer'],
     default: 'viewer'
   },
 
@@ -66,7 +69,18 @@ const UserSchema = new Schema({
       'delete_quotation',
       'view_quotation',
       'generate_quotation_pdf',
-      'manage_quotations'
+      'manage_quotations',
+      // Agent / consumer application module. An `agent` owns their own
+      // applications (create + edit until submitted); review, processing and
+      // document upload stay with admin/manager.
+      'create_application',
+      'edit_application',
+      'view_application',
+      'view_own_applications',
+      'submit_application',
+      'review_application',
+      'process_application',
+      'upload_signed_document'
     ]
   }],
 
@@ -95,7 +109,38 @@ const UserSchema = new Schema({
     default: 'administration'
   },
 
+  /**
+   * Staff number the office gives an agent. Referenced in the welcome email and
+   * on the admin's agent list, so it is part of the model rather than a note.
+   *
+   * Sparse + unique: agents have one, admin/manager accounts that never needed
+   * one are simply absent from the index.
+   */
+  employeeId: {
+    type: String,
+    trim: true,
+    uppercase: true,
+    sparse: true,
+    unique: true
+  },
+
   lastLogin: {
+    type: Date
+  },
+
+  /**
+   * Set when an admin creates the account with a generated password, or resets
+   * one. The API reports it on login and on the profile so the client can push
+   * the user straight to the change-password screen; it is cleared as soon as
+   * they set a password of their own.
+   */
+  mustChangePassword: {
+    type: Boolean,
+    default: false
+  },
+
+  /** When the account's password was last set by its owner. */
+  passwordChangedAt: {
     type: Date
   },
 
@@ -133,10 +178,27 @@ UserSchema.methods = {
   },
 
   /**
+   * Hash and store a new password.
+   *
+   * `require` is not available in an ES module, so crypto is imported at the top
+   * of this file rather than inside the method.
+   */
+  setPassword: async function(newPassword) {
+    const salt = await bcrypt.genSalt(10);
+    this.passwordHash = await bcrypt.hash(newPassword, salt);
+    // The password is now the owner's own choice, so any "change it" prompt is
+    // satisfied and the reset token must not linger.
+    this.mustChangePassword = false;
+    this.passwordChangedAt = new Date();
+    this.resetPasswordToken = undefined;
+    this.resetPasswordExpires = undefined;
+    return this;
+  },
+
+  /**
    * Generate password reset token
    */
   generatePasswordResetToken: function() {
-    const crypto = require('crypto');
     const token = crypto.randomBytes(32).toString('hex');
     this.resetPasswordToken = token;
     this.resetPasswordExpires = Date.now() + 3600000; // 1 hour

@@ -77,6 +77,13 @@ const envSchema = z.object({
 
   // CORS
   CORS_ORIGIN: z.string().default('*'),
+  /**
+   * Public URL of the frontend, used to build the links inside outgoing email
+   * (the "sign in" button in the agent welcome mail). Without it the link falls
+   * back to CORS_ORIGIN, which in development is localhost — useless to an agent
+   * reading the mail on their phone.
+   */
+  CLIENT_URL: z.string().optional(),
   CORS_CREDENTIALS: z.string().default('true'),
   CORS_MAX_AGE: z.string().default('86400'),
 
@@ -109,6 +116,13 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+  /**
+   * Gmail needs the transport to know it is Gmail (port 465 with implicit TLS
+   * rather than STARTTLS). Both are already set in .env but were never declared
+   * here, so the schema silently dropped them.
+   */
+  SMTP_SERVICE: z.string().optional(),
+  SMTP_SECURE: z.string().optional(),
   EMAIL_ENABLED: z.string().default('false'),
 
   // SMS
@@ -126,6 +140,16 @@ const envSchema = z.object({
   BULL_PREFIX: z.string().default('bull'),
   BULL_STALLED_INTERVAL: z.string().default('30000'),
   BULL_MAX_STALLED_COUNT: z.string().default('3'),
+
+  /**
+   * Background job workers are OFF unless this is explicitly 'true'.
+   *
+   * A BullMQ Worker polls its queue continuously by design. On a metered Redis
+   * (Upstash counts every command against the monthly allowance) five idle
+   * workers will burn the free tier within a day, so they no longer start
+   * unless the deployment actually needs them.
+   */
+  ENABLE_QUEUE_WORKERS: z.string().default('false'),
 
   // Puppeteer
   PUPPETEER_EXECUTABLE_PATH: z.string().optional(),
@@ -192,6 +216,7 @@ const envData = {
 
   // CORS
   CORS_ORIGIN: process.env.CORS_ORIGIN,
+  CLIENT_URL: process.env.CLIENT_URL,
   CORS_CREDENTIALS: process.env.CORS_CREDENTIALS,
   CORS_MAX_AGE: process.env.CORS_MAX_AGE,
 
@@ -224,6 +249,8 @@ const envData = {
   SMTP_USER: process.env.SMTP_USER,
   SMTP_PASSWORD: process.env.SMTP_PASSWORD,
   SMTP_FROM: process.env.SMTP_FROM,
+  SMTP_SERVICE: process.env.SMTP_SERVICE,
+  SMTP_SECURE: process.env.SMTP_SECURE,
   EMAIL_ENABLED: process.env.EMAIL_ENABLED,
 
   // SMS
@@ -240,6 +267,7 @@ const envData = {
   BULL_PREFIX: process.env.BULL_PREFIX,
   BULL_STALLED_INTERVAL: process.env.BULL_STALLED_INTERVAL,
   BULL_MAX_STALLED_COUNT: process.env.BULL_MAX_STALLED_COUNT,
+  ENABLE_QUEUE_WORKERS: process.env.ENABLE_QUEUE_WORKERS,
 
   // Puppeteer
   PUPPETEER_EXECUTABLE_PATH: process.env.PUPPETEER_EXECUTABLE_PATH,
@@ -300,6 +328,14 @@ try {
     CORS_CREDENTIALS: validated.CORS_CREDENTIALS === 'true',
     RATE_LIMIT_SKIP_SUCCESSFUL: validated.RATE_LIMIT_SKIP_SUCCESSFUL === 'true',
     EMAIL_ENABLED: validated.EMAIL_ENABLED === 'true',
+    /**
+     * Gmail authenticates with the sending address itself, and .env only sets
+     * SMTP_FROM, so fall back to it rather than sending an empty username and
+     * getting "535 Username and Password not accepted".
+     */
+    SMTP_USER: validated.SMTP_USER || validated.SMTP_FROM,
+    SMTP_SECURE: validated.SMTP_SECURE === 'true',
+    ENABLE_QUEUE_WORKERS: validated.ENABLE_QUEUE_WORKERS === 'true',
     SMS_ENABLED: validated.SMS_ENABLED === 'true',
     PROMETHEUS_ENABLED: validated.PROMETHEUS_ENABLED === 'true',
     ENABLE_PDF_GENERATION: validated.ENABLE_PDF_GENERATION === 'true',
@@ -312,6 +348,7 @@ try {
     // Split arrays
     ALLOWED_FILE_TYPES: validated.ALLOWED_FILE_TYPES.split(',').map(s => s.trim()),
     CORS_ORIGIN: validated.CORS_ORIGIN.split(',').map(s => s.trim()),
+    CLIENT_URL: validated.CLIENT_URL ? validated.CLIENT_URL.replace(/\/$/, '') : '',
     PUPPETEER_LAUNCH_ARGS: validated.PUPPETEER_LAUNCH_ARGS.split(',').map(s => s.trim()),
   };
 } catch (error) {

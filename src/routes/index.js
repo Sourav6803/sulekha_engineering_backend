@@ -10,6 +10,8 @@ import bomTemplateRoutes from './bomTemplate.routes.js';
 import notificationRoutes from './notification.routes.js';
 import quotationRoutes from './quotation.routes.js';
 import agreementRoutes from './agreement.routes.js';
+import applicationRoutes from './application.routes.js';
+import agentRoutes from './agent.routes.js';
 
 const router = Router();
 
@@ -27,5 +29,9 @@ router.use('/bom-templates', bomTemplateRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/quotations', quotationRoutes);
 router.use('/agreements', agreementRoutes);
+// Field-agent consumer applications (document intake → office review).
+router.use('/applications', applicationRoutes);
+// Agent account management — admin only (see agent.routes.js).
+router.use('/agents', agentRoutes);
 
 export default router;

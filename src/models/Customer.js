@@ -49,6 +49,13 @@ const CustomerSchema = new Schema({
     maxlength: [500, 'Address cannot exceed 500 characters']
   },
 
+  street: {
+    type: String,
+    trim: true,
+    maxlength: [200, 'Street cannot exceed 200 characters'],
+    description: 'Road / street name (document checklist: রাস্তার নাম)'
+  },
+
   village: {
     type: String,
     trim: true,
@@ -65,6 +72,13 @@ const CustomerSchema = new Schema({
     type: String,
     trim: true,
     maxlength: [100, 'Panchayat cannot exceed 100 characters']
+  },
+
+  district: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'District cannot exceed 100 characters'],
+    description: 'Revenue district (document checklist: জেলা)'
   },
 
   landmark: {
@@ -103,9 +117,12 @@ const CustomerSchema = new Schema({
   roofType: {
     type: String,
     required: [true, 'Roof type is required'],
+    // Mirrors SITE_TYPES in src/data/applicationChecklist.js: the agent picks
+    // this on the application, and it is carried across to the customer and the
+    // installation once the application is approved.
     enum: {
-      values: ['rcc_rooftop', 'tin_shed', 'ground_mount'],
-      message: 'Roof type must be either rcc_rooftop, tin_shed, or ground_mount'
+      values: ['rcc_rooftop', 'tin_shed', 'high_rise_structure', 'ground_mount'],
+      message: 'Roof type must be one of: rcc_rooftop, tin_shed, high_rise_structure, ground_mount'
     }
   },
 
@@ -279,7 +296,19 @@ CustomerSchema.methods = {
    * Get full address as string
    */
   getFullAddress: function() {
-    return `${this.address}, ${this.city}, ${this.state} - ${this.pincode}`;
+    const parts = [
+      this.address,
+      this.street,
+      this.village,
+      this.block,
+      this.panchayat,
+      this.district,
+      this.city,
+      this.state,
+      this.pincode,
+    ].filter(Boolean);
+
+    return parts.join(', ');
   },
 
   /**
@@ -397,6 +426,7 @@ CustomerSchema.statics = {
 CustomerSchema.index({ name: 1 });
 CustomerSchema.index({ phone: 1 }, { unique: true });
 CustomerSchema.index({ city: 1, state: 1 });
+CustomerSchema.index({ district: 1 });
 CustomerSchema.index({ status: 1, isActive: 1 });
 CustomerSchema.index({ createdAt: -1 });
 
@@ -424,7 +454,11 @@ CustomerSchema.index({
 
 CustomerSchema.pre('save', function(next) {
   // Trim all string fields
-  const fieldsToTrim = ['name', 'phone', 'alternatePhone', 'email', 'address', 'city', 'state', 'pincode'];
+  const fieldsToTrim = [
+    'name', 'phone', 'alternatePhone', 'email', 'address',
+    'street', 'village', 'block', 'panchayat', 'district', 'landmark',
+    'city', 'state', 'pincode',
+  ];
   fieldsToTrim.forEach(field => {
     if (this[field]) {
       this[field] = this[field].trim();

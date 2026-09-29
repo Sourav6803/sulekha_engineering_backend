@@ -8,6 +8,23 @@ import { redisGet, redisSet, redisDel } from '../config/redis.js';
 const CACHE_TTL = 3600; // 1 hour
 const EXTERNAL_CACHE_KEY = 'notifications:external:pm-surya-ghar';
 
+/**
+ * Which notifications a signed-in user is allowed to see.
+ *
+ * `recipient: null` matches an unset field as well as an explicit null, so this
+ * one clause covers the staff-wide notifications written before the field existed
+ * and the ones still meant for everybody (the low-stock alerts). Anything
+ * addressed to somebody else is invisible — from the list, from the unified feed
+ * and from the unread badge. Every one of those three reads must use this; a
+ * targeted notification leaking into another agent's bell would tell them about a
+ * consumer who is not theirs.
+ *
+ * It also has to be part of the cache key — the filter is serialised into the key,
+ * so including the user id here is what stops one agent being served another's
+ * cached list.
+ */
+const audienceFilter = (userId) => ({ $or: [{ recipient: userId }, { recipient: null }] });
+
 // Realistic fallback notifications representing PM Surya Ghar updates
 const FALLBACK_NOTIFICATIONS = [
   {
@@ -180,7 +197,9 @@ export const listNotifications = async (req, res) => {
     sortOrder = 'desc',
   } = req.query;
 
-  const filter = {};
+  // Scoped to the caller. The cache key below is named after the viewer as well,
+  // so two people can never be handed the same cached page.
+  const filter = { ...audienceFilter(req.user._id) };
   if (unread === 'true') filter.isRead = false;
   if (type) filter.type = type;
   if (source) filter.source = source;
@@ -190,7 +209,9 @@ export const listNotifications = async (req, res) => {
   const sort = {};
   sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
-  const cacheKey = `notifications:list:${JSON.stringify({ ...filter, page, limit, sort })}`;
+  // The viewer is named explicitly as well as living inside `filter`: the key
+  // must never be shareable between two users, even if the filter is reworked.
+  const cacheKey = `notifications:list:${req.user._id}:${JSON.stringify({ ...filter, page, limit, sort })}`;
   const cached = await redisGet(cacheKey);
 
   if (cached) {
@@ -224,7 +245,10 @@ export const listNotifications = async (req, res) => {
  * Get unread notification count
  */
 export const getUnreadCount = async (req, res) => {
-  const count = await Notification.countDocuments({ isRead: false });
+  const count = await Notification.countDocuments({
+    ...audienceFilter(req.user._id),
+    isRead: false,
+  });
 
   return ApiResponse.send(res, { unreadCount: count }, 'Unread count fetched successfully');
 };
@@ -237,6 +261,15 @@ export const markAsRead = async (req, res) => {
 
   const notification = await Notification.findById(id);
   if (!notification) {
+    throw ApiError.notFound('Notification');
+  }
+
+  /*
+   * Marking somebody else's notification read is refused, and refused as a 404:
+   * the same "you should not learn that this exists" reasoning the application
+   * service uses for another agent's file.
+   */
+  if (notification.recipient && notification.recipient.toString() !== String(req.user._id)) {
     throw ApiError.notFound('Notification');
   }
 
@@ -253,7 +286,12 @@ export const markAsRead = async (req, res) => {
  * Mark all notifications as read
  */
 export const markAllAsRead = async (req, res) => {
-  await Notification.updateMany({ isRead: false }, { isRead: true });
+  // Scoped to the caller: "read all" must never clear another user's unread
+  // signed-copy notice, which they may not have seen yet.
+  await Notification.updateMany(
+    { ...audienceFilter(req.user._id), isRead: false },
+    { isRead: true }
+  );
 
   await redisDel('notifications:list:*');
 
@@ -275,10 +313,16 @@ export const fetchPMSuryaGharNotifications = async (req, res) => {
 export const getUnifiedNotifications = async (req, res) => {
   const { page = 1, limit = 20, unread = false } = req.query;
 
-  const internalFilter = { isExternal: { $ne: true } };
+  const internalFilter = { ...audienceFilter(req.user._id), isExternal: { $ne: true } };
   if (unread === 'true') internalFilter.isRead = false;
 
-  const cacheKey = `notifications:unified:${JSON.stringify({ page, limit, unread })}`;
+  /*
+   * The viewer is part of the key. `internalFilter` scopes the *query*, but the
+   * cached value is the whole mixed feed — so without the id here the first agent
+   * to ask would have their inbox (their own consumer's signed-copy notice
+   * included) served to everybody else for the next hour.
+   */
+  const cacheKey = `notifications:unified:${req.user._id}:${JSON.stringify({ page, limit, unread })}`;
   const cached = await redisGet(cacheKey);
 
   if (cached) {

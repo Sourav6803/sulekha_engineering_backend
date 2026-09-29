@@ -40,6 +40,15 @@ router.get(
   asyncHandler(quotationController.getNextNumber)
 );
 
+// GET /api/v1/quotations/check-number - is a typed number still free?
+// Read-only; drives the inline warning on the New quotation form.
+router.get(
+  '/check-number',
+  authorize('admin', 'manager'),
+  validate(quotationValidation.checkNumberValidation, 'query'),
+  asyncHandler(quotationController.checkNumber)
+);
+
 // ---------------------------------------------------------------------------
 // Import / back-fill (must also precede '/:id')
 // ---------------------------------------------------------------------------

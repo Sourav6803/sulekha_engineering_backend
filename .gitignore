@@ -1,3 +1,9 @@
 .env
 node_modules/
 .env.local
+
+# Consumer documents uploaded through the agent application flow. These are
+# runtime data (Aadhaar scans, bills, signed copies) and must never be committed.
+# They live on Cloudinary in production; this is the local-development fallback.
+uploads/applications/
+uploads/tmp/

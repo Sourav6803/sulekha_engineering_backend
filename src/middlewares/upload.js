@@ -179,4 +179,37 @@ export const uploadToMemory = multer({
   },
 });
 
+/**
+ * Single file into memory, with the same error mapping as uploadSingle.
+ *
+ * Application documents use this rather than disk storage: the clarity check
+ * needs the bytes before anything is written, and the file may end up on
+ * Cloudinary rather than on the container.
+ *
+ * Usage: uploadSingleToMemory('file')
+ */
+export const uploadSingleToMemory = (fieldName) => {
+  return (req, res, next) => {
+    uploadToMemory.single(fieldName)(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return next(
+              ApiError.badRequest(
+                `File too large. Max size: ${(config.MAX_FILE_SIZE || 5 * 1024 * 1024) / 1024 / 1024}MB`
+              )
+            );
+          }
+          if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+            return next(ApiError.badRequest(`Unexpected file field: ${err.field}`));
+          }
+          return next(ApiError.badRequest(`Upload error: ${err.message}`));
+        }
+        return next(err);
+      }
+      next();
+    });
+  };
+};
+
 export default upload;

@@ -13,6 +13,7 @@ import User from './User.js';
 import Quotation from './Quotation.js';
 import CompanyProfile from './CompanyProfile.js';
 import Agreement from './Agreement.js';
+import Application from './Application.js';
 
 export {
   Supplier,
@@ -27,7 +28,8 @@ export {
   User,
   Quotation,
   CompanyProfile,
-  Agreement
+  Agreement,
+  Application
 };
 
 export default {
@@ -43,5 +45,6 @@ export default {
   User,
   Quotation,
   CompanyProfile,
-  Agreement
+  Agreement,
+  Application
 };

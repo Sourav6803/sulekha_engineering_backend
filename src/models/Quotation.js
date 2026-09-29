@@ -7,12 +7,35 @@ import {
   normaliseSchemeCode,
 } from '../utils/quotationNumber.js';
 import { amountInWords } from '../utils/amountInWords.js';
+import { QUOTATION_TYPES, DEFAULT_QUOTATION_TYPE } from '../data/quotationTypes.js';
 
 const { Schema } = mongoose;
 
-/** Units allowed on a BOQ line. `null`/blank is valid — two lines of the
- *  existing template have no unit at all, and the printed sheet must match. */
-export const QUOTATION_UNITS = ['nos', 'mtr', 'kg', 'lot', 'pair', 'bag', 'roll', 'box'];
+/**
+ * Units allowed on a BOQ line. `null`/blank is valid — two lines of the
+ * existing consumer template have no unit at all, and the printed sheet must
+ * match.
+ *
+ * `kwp`, `set` and `job` come from the partner/project sheet (the Bank of Baroda
+ * quotation prices its arrays in KWp and its switchgear and installation lots as
+ * Set./JOB). Without them a partner sheet cannot be entered at all.
+ */
+export const QUOTATION_UNITS = [
+  'nos',
+  'mtr',
+  'kg',
+  'lot',
+  'pair',
+  'bag',
+  'roll',
+  'box',
+  'kwp',
+  'set',
+  'job',
+];
+
+/** The two kinds of quotation. See src/data/quotationTypes.js for what differs. */
+export { QUOTATION_TYPES, DEFAULT_QUOTATION_TYPE };
 
 export const QUOTATION_STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'expired', 'converted'];
 export const STRUCTURE_TYPES = ['high_rise', 'tin_shed', 'rcc_rooftop', 'ground_mount'];
@@ -31,6 +54,13 @@ const itemSchema = new Schema(
       maxlength: [300, 'BOQ line description cannot exceed 300 characters'],
     },
     brandModel: { type: String, trim: true, maxlength: 120, default: '' },
+    /**
+     * The technical specification column of the partner/project sheet — "Hot dip
+     * galvanized, 80 Microns thick, Design wind speed 150 kmph", and so on. It is
+     * a column of its own on that sheet, not part of the description. Blank on
+     * the domestic sheet, which has no such column.
+     */
+    specification: { type: String, trim: true, maxlength: 400, default: '' },
     qty: {
       type: Number,
       required: [true, 'BOQ line quantity is required'],
@@ -49,6 +79,13 @@ const itemSchema = new Schema(
     amount: { type: Number, min: [0, 'Amount cannot be negative'], default: null },
     isOptional: { type: Boolean, default: false },
     order: { type: Number, default: 0 },
+    /**
+     * The plant section this line belongs to — "5KWP SOLAR POWER PLANT (ON-GRID)".
+     * The partner sheet groups its BOQ into named sections, each carrying its own
+     * sub-total, and consecutive lines sharing this label form one section on the
+     * printed page. Blank on the domestic sheet, which is one flat table.
+     */
+    section: { type: String, trim: true, maxlength: 80, default: '' },
   },
   { _id: true }
 );
@@ -99,6 +136,10 @@ const companySnapshotSchema = new Schema(
     accountNumber: { type: String, trim: true, default: '' },
     ifsc: { type: String, trim: true, default: '' },
     quotationTitle: { type: String, trim: true, default: '' },
+    /** Heading of the business sheet, frozen so a reprint never changes. */
+    partnerTitle: { type: String, trim: true, default: '' },
+    /** The line under the company name on the business sheet. */
+    tagline: { type: String, trim: true, default: '' },
     logoPath: { type: String, trim: true, default: '' },
     /**
      * The fixed wording as it stood when the quotation was issued. Kept on the
@@ -165,6 +206,20 @@ const QuotationSchema = new Schema(
       set: (v) => normaliseSchemeCode(v),
     },
     schemeLabel: { type: String, trim: true, maxlength: 160, default: '' },
+    /**
+     * Which sheet this is. `consumer` is the domestic PM Surya Ghar template that
+     * every household quotation uses; `partner` is the project / material sheet
+     * raised for a solar partner or an institutional client. It drives the
+     * printed columns (serial + specification), the section grouping, the GST
+     * wording and which party signs. Indexed because the list and the register
+     * filter on it. See src/data/quotationTypes.js.
+     */
+    quotationType: {
+      type: String,
+      enum: { values: QUOTATION_TYPES, message: 'Invalid quotation type' },
+      default: DEFAULT_QUOTATION_TYPE,
+      index: true,
+    },
 
     // ---------------------------------------------------------------- customer
     customer: { type: Schema.Types.ObjectId, ref: 'Customer', default: null, index: true },
