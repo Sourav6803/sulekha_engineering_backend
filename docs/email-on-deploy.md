@@ -47,10 +47,49 @@ This makes the failure *fast and legible*. It does not make a blocked port work.
    web services; a paid instance type is not affected. This is the one that hangs
    rather than failing, and it is the one no code change can fix.
 
+### Reading the error when it is this one
+
+The message misleads in a way worth knowing. A live failure looked like this:
+
+```
+code: 'ESOCKET',
+err: 'connect ENETUNREACH 2607:f8b0:400e:c0a::6c:465 - Local (:::0)'
+```
+
+That reads as an IPv6 problem, and IPv6 is not why the mail cannot leave.
+`nodemailer` resolves **both** families and keeps the unused one as a fallback
+(`shared/index.js`), so the reported error is the **last** attempt: IPv4 to
+`smtp.gmail.com:465` was dropped silently by the host — consuming the whole 10 s
+`connectionTimeout` — and only then did the IPv6 fallback fail instantly with
+`ENETUNREACH`, because the container has no IPv6 route. Two facts, one message, and
+the one that matters is the ten-second timeout.
+
+The timestamps are the tell: `18:23:06` when the transport was built, `18:23:16`
+when the send failed.
+
 Note that `.env` is **not** deployed (`gitignore`), so on the host every value has
 to come from the dashboard. `config/env.js` loads env files with `override: true`,
 which means an env file that *is* committed would win over the dashboard — the
 reason the `.env.*` variants are ignored as well.
+
+## Links in the email pointed at localhost
+
+A separate defect, found while reading a deployed service's environment:
+
+| Variable | Value on the service |
+|---|---|
+| `CLIENT_URL` | **not set** |
+| `CORS_ORIGIN` | `http://localhost:3000,https://<frontend>.vercel.app/` |
+
+Every email carries a "sign in here" link built from `CLIENT_URL`, and it fell back
+to the **first** `CORS_ORIGIN` entry when that was unset — which is localhost,
+because that is what development needs. So each welcome mail told a new agent to
+sign in at a developer's machine.
+
+Set `CLIENT_URL` on every deployed instance. The fallback no longer takes `[0]`
+blindly — it skips a localhost entry, so the link is right even without the
+variable — but the variable is what should decide it, and the boot log warns when it
+is missing.
 
 ## Remedies for a blocked port
 

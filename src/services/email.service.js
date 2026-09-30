@@ -72,15 +72,34 @@ const SMTP_NETWORK_CODES = new Set([
  * @param {Error} error
  * @returns {String} a reason fit to show the operator
  */
-const explainSendFailure = (error) => {
+export const explainSendFailure = (error) => {
   const message = (error && error.message) || 'unknown error';
-  if (!SMTP_NETWORK_CODES.has(error && error.code)) return message;
+  const code = error && error.code;
+  if (!SMTP_NETWORK_CODES.has(code)) return message;
 
-  return (
-    `${message}. The mail server could not be reached from this host — managed ` +
-    'hosts commonly block outbound SMTP (ports 25/465/587). Send through an ' +
-    'HTTPS email API, or through a relay that also listens on port 2525.'
+  const parts = [message];
+
+  // Nodemailer resolves both families and keeps the unused one as a fallback, so
+  // this code describes the *last* attempt rather than the first: the IPv4 attempt
+  // before it is what timed out. Saying so avoids a hunt for an IPv6
+  // misconfiguration that is not why the mail cannot leave.
+  //
+  // The message is checked as well as the code because nodemailer reports its own
+  // wrapper code — a live failure arrived as `ESOCKET` carrying
+  // `connect ENETUNREACH 2607:...:465`.
+  if (code === 'ENETUNREACH' || /ENETUNREACH/.test(message)) {
+    parts.push(
+      'That address is IPv6 and this host has no route to it; the IPv4 attempt before it was ' +
+        'dropped or timed out.'
+    );
+  }
+
+  parts.push(
+    'Outbound SMTP (ports 25/465/587) is commonly blocked on managed hosts — send through an ' +
+      'HTTPS email API, or through a relay that also listens on port 2525.'
   );
+
+  return parts.join(' ');
 };
 
 let transporter = null;
@@ -93,17 +112,36 @@ export const isEmailConfigured = () =>
 /** True when sends are switched on *and* configured. */
 export const isEmailEnabled = () => config.EMAIL_ENABLED === true && isEmailConfigured();
 
-/** Where the "log in here" link in an email should point. */
+/** `https://x.vercel.app/` and `https://x.vercel.app` are the same place to link to. */
+const stripTrailingSlash = (value) => String(value ?? '').replace(/\/+$/, '');
+
+const isLocalhost = (value) =>
+  /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(String(value ?? '').trim());
+
+/**
+ * Where the "log in here" link in an email should point.
+ *
+ * `CLIENT_URL` first, then the first `CORS_ORIGIN` entry that is not localhost,
+ * then localhost as the last resort.
+ *
+ * The middle step is the point. `CORS_ORIGIN` is a list whose first entry is
+ * `http://localhost:3000`, because that is what development needs — so taking `[0]`
+ * put a link to a developer's own machine into every welcome email an agent
+ * received, which is useless from a phone. A deployed instance had exactly that:
+ * `CLIENT_URL` unset and `CORS_ORIGIN` starting with localhost.
+ */
 const resolveAppUrl = () => {
   const explicit = config.CLIENT_URL || config.FRONTEND_URL || config.APP_URL;
-  if (explicit) return String(explicit).replace(/\/$/, '');
+  if (explicit) return stripTrailingSlash(explicit);
 
-  const corsOrigin = Array.isArray(config.CORS_ORIGIN) ? config.CORS_ORIGIN[0] : config.CORS_ORIGIN;
-  // A wildcard origin is useless in a link, so fall back to localhost in that
-  // case and let CLIENT_URL be set for real deployments.
-  if (corsOrigin && corsOrigin !== '*') return String(corsOrigin).replace(/\/$/, '');
+  const origins = (Array.isArray(config.CORS_ORIGIN) ? config.CORS_ORIGIN : [config.CORS_ORIGIN])
+    .map((value) => String(value ?? '').trim())
+    // A wildcard origin is useless in a link.
+    .filter((value) => value && value !== '*');
 
-  return 'http://localhost:3000';
+  const reachable = origins.find((origin) => !isLocalhost(origin));
+
+  return stripTrailingSlash(reachable || origins[0] || '') || 'http://localhost:3000';
 };
 
 export const getAppUrl = resolveAppUrl;

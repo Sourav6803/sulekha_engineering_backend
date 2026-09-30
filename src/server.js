@@ -10,6 +10,7 @@ import { getRedis, redisQuit } from './config/redis.js';
 import { initializeQueue, closeQueue } from './jobs/queue.js';
 import { describeChrome } from './services/chromeLaunch.js';
 import { describeOrigins, allowsAnyOrigin } from './config/cors.js';
+import { getAppUrl } from './services/email.service.js';
 
 // ============================================
 // GRACEFUL SHUTDOWN
@@ -134,6 +135,16 @@ const startServer = async () => {
       if (allowsAnyOrigin(config.CORS_ORIGIN)) {
         logger.warn(
           'CORS_ORIGIN is not set to a frontend origin, so every origin is accepted. Set it to the frontend URL to narrow this.'
+        );
+      }
+
+      // Every email links to the frontend ("sign in here"), and without CLIENT_URL
+      // the link falls back to whichever origin happens to be first — which is
+      // localhost, the one place an agent cannot reach. Worth saying out loud,
+      // because the mail itself still sends and nothing else shows it.
+      if (!config.CLIENT_URL) {
+        logger.warn(
+          `CLIENT_URL is not set, so links in outgoing email are built from CORS_ORIGIN (${getAppUrl()}). Set CLIENT_URL to the frontend URL.`
         );
       }
     } else {
