@@ -29,6 +29,60 @@ const HERE = dirOf(fileURLToPath(import.meta.url));
 const LOGO_PATH = path.resolve(HERE, '../../assets/sulekha-logo.jpeg');
 const LOGO_CID = 'sulekha-logo';
 
+/**
+ * How long a send may take before it is given up on.
+ *
+ * A host that blocks outbound mail ports does not *refuse* the connection, it
+ * drops it — so these values, not the mail server, decide how long the operator
+ * waits. Nodemailer's own defaults are 30s for DNS, 2 minutes for the connection,
+ * 30s for the greeting and 10 minutes for an idle socket; that is how "Create
+ * agent" turned into a two-minute hang that ended with no email and no clue.
+ * Long enough for a real relay to answer, short enough to fail while the admin is
+ * still looking at the screen.
+ */
+const EMAIL_TIMEOUTS = {
+  dns: 10 * 1000,
+  connection: 10 * 1000,
+  greeting: 10 * 1000,
+  socket: 20 * 1000,
+};
+
+/**
+ * The errno codes an unreachable or filtered mail port produces.
+ */
+const SMTP_NETWORK_CODES = new Set([
+  'ETIMEDOUT',
+  'ESOCKET',
+  'ECONNECTION',
+  'ECONNREFUSED',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'EAI_AGAIN',
+  'ENOTFOUND',
+  'EPROTOCOL',
+]);
+
+/**
+ * "connect ETIMEDOUT 142.250.192.109:465" tells an operator nothing about what to
+ * do next, and this is the failure they will actually see: a host that blocks
+ * outbound SMTP accepts no connection and the send dies on the timeout. The
+ * original message is kept — it is the evidence — and the likely cause is added
+ * after it.
+ *
+ * @param {Error} error
+ * @returns {String} a reason fit to show the operator
+ */
+const explainSendFailure = (error) => {
+  const message = (error && error.message) || 'unknown error';
+  if (!SMTP_NETWORK_CODES.has(error && error.code)) return message;
+
+  return (
+    `${message}. The mail server could not be reached from this host — managed ` +
+    'hosts commonly block outbound SMTP (ports 25/465/587). Send through an ' +
+    'HTTPS email API, or through a relay that also listens on port 2525.'
+  );
+};
+
 let transporter = null;
 let transporterConfigKey = null;
 
@@ -79,6 +133,11 @@ const getTransporter = () => {
     },
   };
 
+  options.dnsTimeout = EMAIL_TIMEOUTS.dns;
+  options.connectionTimeout = EMAIL_TIMEOUTS.connection;
+  options.greetingTimeout = EMAIL_TIMEOUTS.greeting;
+  options.socketTimeout = EMAIL_TIMEOUTS.socket;
+
   if (config.SMTP_SERVICE) options.service = config.SMTP_SERVICE;
 
   transporter = nodemailer.createTransport(options);
@@ -125,8 +184,8 @@ export const sendMail = async ({ to, subject, html, text, replyTo, cc, bcc, atta
   } catch (error) {
     // Never rethrow: a bounced welcome email must not roll back an agent that
     // the database has already created.
-    logger.error({ to, subject, err: error.message }, 'Email send failed');
-    return { sent: false, reason: error.message };
+    logger.error({ to, subject, code: error.code, err: error.message }, 'Email send failed');
+    return { sent: false, reason: explainSendFailure(error) };
   }
 };
 
@@ -144,7 +203,7 @@ export const verifyEmailTransport = async () => {
     await getTransporter().verify();
     return { ok: true };
   } catch (error) {
-    return { ok: false, reason: error.message };
+    return { ok: false, reason: explainSendFailure(error) };
   }
 };
 

@@ -2,6 +2,13 @@
 node_modules/
 .env.local
 
+# Every file `config/env.js` reads, not just the two above. It loads them with
+# `override: true`, so a committed one silently wins over the variables set in a
+# host's dashboard — a confusing way to find out a secret was published.
+.env.production
+.env.staging
+.env.development
+
 # Consumer documents uploaded through the agent application flow. These are
 # runtime data (Aadhaar scans, bills, signed copies) and must never be committed.
 # They live on Cloudinary in production; this is the local-development fallback.
