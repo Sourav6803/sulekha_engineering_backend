@@ -8,6 +8,7 @@ import logger from './utils/logger.js';
 import { connectDB, disconnectDB } from './config/db.js';
 import { getRedis, redisQuit } from './config/redis.js';
 import { initializeQueue, closeQueue } from './jobs/queue.js';
+import { describeChrome } from './services/chromeLaunch.js';
 
 // ============================================
 // GRACEFUL SHUTDOWN
@@ -96,6 +97,26 @@ const startServer = async () => {
       logger.info('✅ Queue system initialized');
     } else {
       logger.info('Background job workers are disabled (ENABLE_QUEUE_WORKERS is not "true")');
+    }
+
+    // ============================================
+    // DOCUMENT RENDERER
+    // ============================================
+    // Reported at boot because a deploy that cannot find Chrome stays invisible
+    // until someone opens a PDF — and by then nobody is reading the build log.
+    // Read-only: it resolves paths and reads the filesystem, never launching a
+    // browser (see GET /health/renderer for the same answer on demand).
+    try {
+      const renderer = await describeChrome();
+      const browser = renderer.resolvedPath;
+
+      logger.info(
+        browser
+          ? `Document renderer: ${browser}`
+          : `Document renderer: NO BROWSER FOUND (cache checked: ${renderer.projectCacheDir})`
+      );
+    } catch (error) {
+      logger.warn(`Document renderer could not be inspected: ${error.message}`);
     }
 
     // ============================================

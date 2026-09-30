@@ -11,6 +11,7 @@
   "scripts": {
     "test": "node --test --test-concurrency=2 \"tests/**/*.test.js\"",
     "test:quotation": "node --test tests/quotationNumber.test.js tests/amountInWords.test.js tests/quotation.validation.test.js tests/quotationImport.test.js tests/quotationApi.test.js",
+    "postinstall": "node src/tools/ensure-chrome.mjs",
     "start": "node src/server.js",
     "dev": "nodemon --dns-result-order=ipv4first src/server.js"
   },

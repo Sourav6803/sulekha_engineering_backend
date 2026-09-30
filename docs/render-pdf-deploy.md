@@ -54,7 +54,7 @@ outright:
 | `details.reason` starts with | Cause | Fix |
 |---|---|---|
 | `error while loading shared libraries` | 3 | Docker (below) |
-| `Could not find Chrome` | 2 | Cache directory (below) |
+| `Could not find Chrome` | 2 | Fixed in the code — the browser is now installed into the project's own cache (Route A). Redeploy. |
 | `Failed to launch the browser process` | 3 | Docker (below) |
 | `Timed out` / `DevToolsActivePort` | 1 | Already fixed — redeploy |
 | `No usable sandbox` | — | Keep `--no-sandbox`, it is in the defaults |
@@ -66,23 +66,39 @@ once at the first render, so a failed deploy is diagnosable without shell access
 
 ## Route A — keep the native Node runtime
 
-Redeploy first. With the launch flags fixed, cause 1 is resolved on its own.
+**Cause 2 is now handled in the code, with no dashboard change.** `postinstall`
+runs `src/tools/ensure-chrome.mjs`, which installs the browser Puppeteer pins into
+`<project>/.cache/puppeteer` — inside the project directory, which is the one part
+of the filesystem Render carries from the build into the service. At run time
+`src/config/chromeCache.js` points `PUPPETEER_CACHE_DIR` at that directory when it
+actually holds a browser, so the build half and the running half agree. On a
+machine whose browser is already in `~/.cache/puppeteer` (a laptop), nothing is
+overridden and nothing is downloaded twice.
 
-If `details.reason` then says `Could not find Chrome`, point the cache somewhere
-that survives the build. In **Settings → Environment**:
+So: **redeploy, then read the boot log.** It now starts with a line like
 
 ```
-PUPPETEER_CACHE_DIR = /opt/render/project/src/.cache/puppeteer
+Document renderer: /opt/render/project/src/.cache/puppeteer/chrome/linux-151.0.7922.71/chrome-linux64/chrome
 ```
 
-and in **Settings → Build & Deploy → Build Command**:
+and `GET /health/renderer` answers the same question on demand. That endpoint
+never launches a browser and always answers 200 — a 503 would be read as "the
+service is down" by a health check pointed at it, and restart the instance it is
+inspecting.
 
-```bash
-npm install && npx puppeteer browsers install chrome
-```
+If the boot line says `NO BROWSER FOUND`, the download did not happen; the build
+log carries the installer's own `[chrome]` lines saying why. These two dashboard
+values still work and take precedence over the automatic location — they are only
+needed when you want the browser somewhere else deliberately:
 
-The second command is what makes the browser explicit rather than relying on the
-install script having run. Neither needs a code change.
+| Setting | Value |
+|---|---|
+| **Environment** → `PUPPETEER_CACHE_DIR` | `/opt/render/project/src/.cache/puppeteer` |
+| **Build Command** | `npm install && npx puppeteer browsers install chrome` |
+
+`PUPPETEER_SKIP_DOWNLOAD=1` opts the installer out completely — that is the right
+setting on a host that manages its own browser, together with
+`PUPPETEER_EXECUTABLE_PATH`.
 
 If `details.reason` then reports missing **shared libraries**, the native runtime
 cannot be fixed — there is no root to `apt-get` with. Use Route B.
@@ -109,11 +125,23 @@ distro's `chromium`. They have to agree: Puppeteer drives Chrome over a debuggin
 protocol, and a browser a dozen major versions behind is where layout differences
 come from.
 
+Note that the image installs the browser through the same `postinstall` hook, into
+`/app/.cache/puppeteer` — which is why the Dockerfile copies
+`src/tools/ensure-chrome.mjs` and `src/config/chromeCache.js` *before* `npm ci`
+runs, rather than after `COPY . .` like everything else.
+
 ### Verifying
 
-After either route, hit the PDF route again. A healthy deploy returns the PDF.
-If it still fails, `details.reason` has moved on and the table above says what to
-do next.
+After either route, hit `GET /health/renderer` first: `ready: true` means a browser
+was found, so the PDF route will work. `ready: false` names the cache directory it
+checked and nothing has to be guessed.
+
+Then hit the PDF route. A healthy deploy returns the PDF. If it still fails,
+`details.reason` has moved on and the table above says what to do next.
+
+One thing to expect: `ready: true` proves the browser was *found*, not that it can
+*run*. Missing shared libraries only show up when it is launched, so the PDF route
+is still the final word.
 
 ---
 

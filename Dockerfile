@@ -66,7 +66,16 @@ WORKDIR /app
 
 # Dependencies first, so a code-only change reuses this layer. The lockfile is
 # copied explicitly because `npm ci` requires it.
+#
+# `ensure-chrome.mjs` is copied too, and deliberately: it is wired to the root
+# `postinstall`, which `npm ci` runs, and the browser has to be installed into the
+# project's own cache (`.cache/puppeteer`) rather than `~/.cache/puppeteer` — see
+# `src/config/chromeCache.js`. Without this line the postinstall would find no
+# script and fail the build. `chromeCache.js` comes with it because the installer
+# imports it.
 COPY package.json package-lock.json ./
+COPY src/config/chromeCache.js ./src/config/chromeCache.js
+COPY src/tools/ensure-chrome.mjs ./src/tools/ensure-chrome.mjs
 RUN npm ci --omit=dev
 
 COPY . .

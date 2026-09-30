@@ -3,6 +3,13 @@ import fs from 'node:fs';
 import puppeteer from 'puppeteer';
 import config from '../config/env.js';
 import logger from '../utils/logger.js';
+import {
+  LOCAL_CHROME_CACHE,
+  EXISTING_CHROME_PATHS,
+  adoptLocalCacheIfPresent,
+  cacheDir,
+  findCachedChrome,
+} from '../config/chromeCache.js';
 
 /**
  * Where Chrome comes from and how it is started, in one place.
@@ -31,14 +38,21 @@ export const REQUIRED_LAUNCH_ARGS = [
   '--font-render-hinting=none',
 ];
 
-/** Where the common server images install Chrome, if they ship it themselves. */
-export const SYSTEM_CHROME_PATHS = [
-  '/usr/bin/google-chrome-stable',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser',
-  '/snap/bin/chromium',
-];
+/**
+ * Where a host may already keep Chrome: the paths the common server images
+ * install it to, plus a developer's own browser. The canonical list lives in
+ * `config/chromeCache.js`, which the postinstall installer also reads, so the two
+ * can never drift apart.
+ */
+export const SYSTEM_CHROME_PATHS = EXISTING_CHROME_PATHS;
+
+/*
+ * Adopt the browser the deploy carried with it, before anything asks where Chrome
+ * is. This only does something when that cache is actually populated — a machine
+ * whose browser is in the default `~/.cache/puppeteer` is left alone.
+ * `chromeCache.js` explains why the location matters.
+ */
+adoptLocalCacheIfPresent();
 
 /**
  * Resolved once per process: the browser does not move while the server is up,
@@ -91,6 +105,21 @@ export const resolveExecutablePath = async () => {
     } catch (error) {
       // Thrown when no browser has been downloaded; the distro paths may still work.
       logger.warn({ err: error.message }, 'PDF: Puppeteer has no browser of its own');
+    }
+
+    /*
+     * The build id moves whenever Puppeteer is upgraded, so a browser left in the
+     * cache by an earlier version is not the path Puppeteer computes above — yet it
+     * is still a browser that can print an A4 sheet. Rendering is worth more than
+     * version purity, so it is used and the mismatch is logged.
+     */
+    const cached = findCachedChrome();
+    if (cached) {
+      logger.warn(
+        { executablePath: cached, cacheDir: cacheDir() },
+        'PDF: using a browser from the cache — Puppeteer’s pinned build is missing'
+      );
+      return cached;
     }
 
     for (const candidate of SYSTEM_CHROME_PATHS) {
@@ -153,6 +182,15 @@ export const describeChrome = async () => ({
   resolvedPath: (await resolveExecutablePath()) || null,
   launchArgs: launchArgs(),
   systemChrome: SYSTEM_CHROME_PATHS.filter((candidate) => fs.existsSync(candidate)),
+  /**
+   * The project's own cache — the one the deploy carries with it, and the one
+   * that is empty when a host builds and runs in different filesystems. Reported
+   * beside `resolvedPath` so a missing browser can be told apart from a mispointed
+   * one. Named for the project rather than "cacheDir" because Puppeteer falls back
+   * to `~/.cache/puppeteer` when nothing has been adopted, and that is not this.
+   */
+  projectCacheDir: cacheDir(),
+  projectCacheBinary: findCachedChrome(LOCAL_CHROME_CACHE),
 });
 
 export default {

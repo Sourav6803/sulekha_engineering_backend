@@ -10,6 +10,7 @@ import logger, { stream } from './utils/logger.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { rateLimiter } from './middlewares/rateLimiter.js';
 import { authenticate } from './middlewares/auth.js';
+import { describeChrome } from './services/chromeLaunch.js';
 import routes from './routes/index.js';
 
 // Initialize Express
@@ -123,6 +124,34 @@ app.get('/live', (req, res) => {
     status: 'alive',
     timestamp: new Date().toISOString(),
   });
+});
+
+/**
+ * Renderer probe — the answer to "why does the PDF route 503 on this host?".
+ *
+ * Read-only and cheap: it resolves paths and reads the filesystem but never
+ * launches a browser. On a host with no shell access this is the only way to tell
+ * a missing browser apart from a mispointed one after a deploy.
+ *
+ * Always answers 200. A 503 here would be read as "this service is down" by a
+ * health check pointed at it, and restart the very instance it is inspecting.
+ */
+app.get('/health/renderer', async (req, res) => {
+  try {
+    const renderer = await describeChrome();
+
+    res.status(200).json({
+      status: 'ok',
+      ready: Boolean(renderer.resolvedPath),
+      renderer,
+    });
+  } catch (error) {
+    res.status(200).json({
+      status: 'ok',
+      ready: false,
+      error: error.message,
+    });
+  }
 });
 
 // ============================================
