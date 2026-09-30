@@ -11,6 +11,7 @@ import { errorHandler } from './middlewares/errorHandler.js';
 import { rateLimiter } from './middlewares/rateLimiter.js';
 import { authenticate } from './middlewares/auth.js';
 import { describeChrome } from './services/chromeLaunch.js';
+import { buildCorsOptions, warnOnRefusedOrigin } from './config/cors.js';
 import routes from './routes/index.js';
 
 // Initialize Express
@@ -30,21 +31,31 @@ app.use(
   })
 );
 
-// CORS configuration
-const corsOptions = {
-  origin: config.CORS_ORIGIN || '*',
+/**
+ * CORS configuration.
+ *
+ * The policy itself lives in `config/cors.js` — reading `CORS_ORIGIN` straight into
+ * the middleware is what made an unset variable refuse every origin in production
+ * (that file explains the mechanism). Here we only decide that production enforces
+ * the list while development allows anything, which is why a wrong `CORS_ORIGIN`
+ * stays invisible until after a deploy.
+ *
+ * `warnOnRefusedOrigin` sets no headers and decides nothing; it exists so a refusal
+ * becomes a line in the host's log naming the origin to add, instead of only a
+ * browser console error.
+ */
+const corsOptions = buildCorsOptions({
+  origin: config.CORS_ORIGIN,
   credentials: config.CORS_CREDENTIALS,
   maxAge: config.CORS_MAX_AGE,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['X-Total-Count', 'X-Page-Total'],
-};
+});
 
 if (config.NODE_ENV === 'production') {
-  // In production, only allow specific origins
+  app.use(warnOnRefusedOrigin(config.CORS_ORIGIN));
   app.use(cors(corsOptions));
 } else {
-  // In development, allow all origins
+  // In development every origin is allowed, which is what a frontend on another
+  // port needs — and why this configuration never gets exercised locally.
   app.use(cors());
 }
 

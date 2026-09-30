@@ -9,6 +9,7 @@ import { connectDB, disconnectDB } from './config/db.js';
 import { getRedis, redisQuit } from './config/redis.js';
 import { initializeQueue, closeQueue } from './jobs/queue.js';
 import { describeChrome } from './services/chromeLaunch.js';
+import { describeOrigins, allowsAnyOrigin } from './config/cors.js';
 
 // ============================================
 // GRACEFUL SHUTDOWN
@@ -117,6 +118,26 @@ const startServer = async () => {
       );
     } catch (error) {
       logger.warn(`Document renderer could not be inspected: ${error.message}`);
+    }
+
+    // ============================================
+    // CROSS-ORIGIN POLICY
+    // ============================================
+    // Printed for the same reason as the line above: a policy that refuses the
+    // deployed frontend is otherwise only visible as a browser console error — and
+    // the value that reads as "allow everything" is capable of refusing all.
+    if (config.NODE_ENV === 'production') {
+      logger.info(`CORS allowed origins: ${describeOrigins(config.CORS_ORIGIN)}`);
+
+      // `*` is honoured — any origin is reflected — but it is a policy worth
+      // noticing, because the safer answer costs one environment variable.
+      if (allowsAnyOrigin(config.CORS_ORIGIN)) {
+        logger.warn(
+          'CORS_ORIGIN is not set to a frontend origin, so every origin is accepted. Set it to the frontend URL to narrow this.'
+        );
+      }
+    } else {
+      logger.info('CORS: every origin allowed (development)');
     }
 
     // ============================================
