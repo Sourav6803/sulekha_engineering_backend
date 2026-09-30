@@ -1,8 +1,7 @@
 // src/services/pdfBrowser.js
-import fs from 'node:fs';
 import puppeteer from 'puppeteer';
-import config from '../config/env.js';
 import logger from '../utils/logger.js';
+import { buildLaunchOptions } from './chromeLaunch.js';
 
 /**
  * Shared headless-Chrome plumbing for the document renderers.
@@ -25,21 +24,15 @@ const closeAfterIdle = () => {
   if (typeof idleTimer.unref === 'function') idleTimer.unref();
 };
 
-/** Launch options shared by every document type. */
-export const buildLaunchOptions = () => {
-  const options = {
-    headless: true,
-    args: config.PUPPETEER_LAUNCH_ARGS || ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-  };
-
-  // Only pass an explicit path when it really exists: a stale value (the old
-  // /usr/bin/google-chrome default) makes every launch fail.
-  if (config.PUPPETEER_EXECUTABLE_PATH && fs.existsSync(config.PUPPETEER_EXECUTABLE_PATH)) {
-    options.executablePath = config.PUPPETEER_EXECUTABLE_PATH;
-  }
-
-  return options;
-};
+/**
+ * Launch options shared by every document type — see `chromeLaunch.js`, which
+ * merges the flags a container needs under whatever `PUPPETEER_LAUNCH_ARGS`
+ * asks for. Reading the config directly here was the bug: the config layer
+ * always returns a non-empty array, so the `||` fallback never ran and
+ * `--disable-dev-shm-usage` was silently dropped, which is what killed Chrome on
+ * a host with the stock 64 MB /dev/shm.
+ */
+export { buildLaunchOptions };
 
 export const getBrowser = async () => {
   if (browserPromise) {
@@ -54,7 +47,7 @@ export const getBrowser = async () => {
     }
   }
 
-  browserPromise = puppeteer.launch(buildLaunchOptions()).catch((error) => {
+  browserPromise = puppeteer.launch(await buildLaunchOptions()).catch((error) => {
     browserPromise = null;
     logger.error('Could not start the PDF renderer:', error);
     throw error;

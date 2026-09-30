@@ -1,10 +1,9 @@
 // src/services/pdf.service.js
 import puppeteer from 'puppeteer';
-import fs from 'node:fs';
 import { format } from 'date-fns';
 import { ApiError } from '../utils/ApiError.js';
 import logger from '../utils/logger.js';
-import config from '../config/env.js';
+import { buildLaunchOptions } from './chromeLaunch.js';
 
 const COMPANY = {
   name: 'SULEKHA ENGINEERING',
@@ -273,36 +272,34 @@ export const pdfService = {
   /**
    * Get browser instance with optimized settings.
    *
-   * Only passes an `executablePath` when the configured file actually exists.
-   * Puppeteer otherwise honours PUPPETEER_EXECUTABLE_PATH itself and will throw
-   * for a stale/Linux value on a Windows box — the previous `/usr/bin/google-chrome`
-   * default broke every launch here. When no valid path is configured we leave
-   * it undefined so Puppeteer auto-discovers the Chromium it downloaded into
-   * `%USERPROFILE%\.cache\puppeteer`.
+   * Path resolution and the container-safe flags come from `chromeLaunch.js`.
+   * That module only passes an `executablePath` when the file actually exists, so
+   * a stale Linux value cannot break a Windows box — the previous
+   * `/usr/bin/google-chrome` default did exactly that — and it picks up a system
+   * Chrome when Puppeteer has not downloaded one, which is what a server image
+   * with Chromium already installed needs.
    */
   async getBrowser() {
-    const configuredPath = config.PUPPETEER_EXECUTABLE_PATH;
-    const executablePath = configuredPath && fs.existsSync(configuredPath) ? configuredPath : undefined;
-
-    const options = {
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
-        '--window-size=1920,1080',
-      ],
-      executablePath,
-      headless: true,
-      ignoreHTTPSErrors: true,
-    };
+    const options = await buildLaunchOptions({
+      extraArgs: ['--disable-accelerated-2d-canvas', '--window-size=1920,1080'],
+    });
 
     try {
       return await puppeteer.launch(options);
     } catch (error) {
-      logger.error('Browser launch failed:', error);
-      throw new ApiError(500, 'Failed to launch browser for PDF generation');
+      logger.error(
+        { err: error, executablePath: options.executablePath },
+        'Browser launch failed:'
+      );
+      throw new ApiError(
+        500,
+        'Failed to launch browser for PDF generation',
+        'PDF_RENDERER_UNAVAILABLE',
+        {
+          reason: String(error?.message || error).split('\n')[0],
+          executablePath: options.executablePath || null,
+        }
+      );
     }
   },
 

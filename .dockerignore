@@ -1,0 +1,27 @@
+# Nothing here should reach the image.
+#
+# node_modules is rebuilt inside the container by `npm ci` — copying the host's
+# would bring in a Chromium downloaded for Windows or macOS, which is worse than
+# having none: chromeLaunch.js would find a binary that cannot execute.
+node_modules
+npm-debug.log*
+
+# Secrets and per-machine overrides. Render supplies the real values as
+# environment variables; baking a developer's .env into an image would ship live
+# database and SMTP credentials with every deploy.
+.env
+.env.*
+!.env.example
+
+# Runtime data: consumer documents (Aadhaar scans, bills, signed copies) live on
+# Cloudinary in production. The local fallback never belongs in an image.
+uploads/
+
+# Local-only tooling and artefacts.
+tests
+scripts
+browser-check
+temp
+coverage
+.github
+*.log

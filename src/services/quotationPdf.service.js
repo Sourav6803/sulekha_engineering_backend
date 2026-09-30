@@ -9,6 +9,7 @@ import logger from '../utils/logger.js';
 import { ApiError } from '../utils/ApiError.js';
 import { formatQuotationAmount } from '../utils/quotationNumber.js';
 import { DEFAULT_PARTNER_TITLE, DEFAULT_PARTNER_TAGLINE } from '../data/quotationTypes.js';
+import { buildLaunchOptions, describeChrome } from './chromeLaunch.js';
 
 /**
  * Quotation document renderer.
@@ -706,24 +707,17 @@ let idleTimer = null;
 const IDLE_CLOSE_MS = 120000;
 
 /**
- * Launch options follow the existing pdf.service conventions: an explicit
- * executablePath is only used when the configured file actually exists, so a
- * stale Linux value cannot break a Windows box. Puppeteer otherwise discovers
- * its own Chromium.
+ * Launch options. Where Chrome comes from, and the flags a server needs, live in
+ * `chromeLaunch.js` — the same browser serves every document type, so the
+ * container-safe flags are shared rather than repeated per renderer.
  */
-const launchOptions = () => {
-  const configured = config.PUPPETEER_EXECUTABLE_PATH;
-  const executablePath = configured && fs.existsSync(configured) ? configured : undefined;
+const launchOptions = async () => ({
+  ...(await buildLaunchOptions()),
+  timeout: Number(config.PUPPETEER_TIMEOUT) || 30000,
+});
 
-  return {
-    headless: true,
-    executablePath,
-    ignoreHTTPSErrors: true,
-    args: config.PUPPETEER_LAUNCH_ARGS?.length
-      ? config.PUPPETEER_LAUNCH_ARGS
-      : ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--font-render-hinting=none'],
-  };
-};
+/** What the renderer found, for a health check or a support request. */
+export const describePdfRenderer = describeChrome;
 
 const getBrowser = async () => {
   if (idleTimer) {
@@ -732,13 +726,30 @@ const getBrowser = async () => {
   }
 
   if (!browserPromise) {
-    browserPromise = puppeteer.launch(launchOptions()).catch((error) => {
+    const options = await launchOptions();
+
+    browserPromise = puppeteer.launch(options).catch((error) => {
       browserPromise = null;
-      logger.error('Quotation PDF: browser launch failed:', error);
+      logger.error({ err: error, executablePath: options.executablePath }, 'Quotation PDF: browser launch failed');
+
+      /*
+       * The first line of Chrome's own message is the whole diagnosis —
+       * "Could not find Chrome (ver. …)" means the browser was never downloaded,
+       * "error while loading shared libraries" means the host is missing one of
+       * the libraries Chrome links against, and "DevToolsActivePort" means it got
+       * far enough to start and then died. None of that is guessable from the
+       * generic message, and on a host with no shell access the API response is
+       * the only place the operator can see it, so it is passed through.
+       */
       throw new ApiError(
         503,
         'The document renderer is unavailable. Chrome could not be started on the server.',
-        'PDF_RENDERER_UNAVAILABLE'
+        'PDF_RENDERER_UNAVAILABLE',
+        {
+          reason: String(error?.message || error).split('\n')[0],
+          executablePath: options.executablePath || null,
+          platform: process.platform,
+        }
       );
     });
   }
@@ -912,6 +923,7 @@ export const quotationPdfService = {
   formatDocumentDate,
   loadLogoDataUri,
   loadBrandLogoDataUri,
+  describePdfRenderer,
   renderQuotationPdf,
   renderQuotationHtml,
   countPdfPages,

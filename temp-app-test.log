@@ -1,0 +1,413 @@
+﻿TAP version 13
+# ◇ injected env (77) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+# ◇ injected env (77) from .env.local // tip: ⌘ suppress logs { quiet: true }
+# Loaded environment variables from: .env, .env.local
+# Subtest: readDimensions: reads PNG width and height from the IHDR chunk
+ok 1 - readDimensions: reads PNG width and height from the IHDR chunk
+  ---
+  duration_ms: 1947.8351
+  type: 'test'
+  ...
+# Subtest: readDimensions: reads JPEG width and height from the SOF0 marker
+ok 2 - readDimensions: reads JPEG width and height from the SOF0 marker
+  ---
+  duration_ms: 0.5509
+  type: 'test'
+  ...
+# Subtest: readDimensions: returns null for something that is not an image
+ok 3 - readDimensions: returns null for something that is not an image
+  ---
+  duration_ms: 0.2639
+  type: 'test'
+  ...
+# Subtest: quality: a thumbnail-sized photo is rejected as too small
+ok 4 - quality: a thumbnail-sized photo is rejected as too small
+  ---
+  duration_ms: 5.7217
+  type: 'test'
+  ...
+# Subtest: quality: a full-size, incompressible photo passes
+ok 5 - quality: a full-size, incompressible photo passes
+  ---
+  duration_ms: 85.4485
+  type: 'test'
+  ...
+# Subtest: quality: an over-compressed photo is rejected for its byte size
+ok 6 - quality: an over-compressed photo is rejected for its byte size
+  ---
+  duration_ms: 64.1643
+  type: 'test'
+  ...
+# Subtest: quality: a PDF scan is skipped, not failed
+ok 7 - quality: a PDF scan is skipped, not failed
+  ---
+  duration_ms: 0.4161
+  type: 'test'
+  ...
+# Subtest: quality: rejects a wildly cropped strip
+ok 8 - quality: rejects a wildly cropped strip
+  ---
+  duration_ms: 149.0494
+  type: 'test'
+  ...
+# Subtest: nameMatch: identical names pass
+ok 9 - nameMatch: identical names pass
+  ---
+  duration_ms: 1.5913
+  type: 'test'
+  ...
+# Subtest: nameMatch: case and punctuation differences are not a mismatch
+ok 10 - nameMatch: case and punctuation differences are not a mismatch
+  ---
+  duration_ms: 0.602
+  type: 'test'
+  ...
+# Subtest: nameMatch: honorifics are folded away
+ok 11 - nameMatch: honorifics are folded away
+  ---
+  duration_ms: 0.2716
+  type: 'test'
+  ...
+# Subtest: nameMatch: a genuinely different name is a mismatch
+ok 12 - nameMatch: a genuinely different name is a mismatch
+  ---
+  duration_ms: 0.3538
+  type: 'test'
+  ...
+# Subtest: nameMatch: a missing document name is incomplete, not a pass
+ok 13 - nameMatch: a missing document name is incomplete, not a pass
+  ---
+  duration_ms: 0.2115
+  type: 'test'
+  ...
+# Subtest: nameMatch: an extra middle name is near_match, never a clean pass
+ok 14 - nameMatch: an extra middle name is near_match, never a clean pass
+  ---
+  duration_ms: 0.25
+  type: 'test'
+  ...
+# Subtest: bill portal: the bare link is the board page
+ok 15 - bill portal: the bare link is the board page
+  ---
+  duration_ms: 0.1777
+  type: 'test'
+  ...
+# Subtest: bill portal: ids are appended when asked for
+ok 16 - bill portal: ids are appended when asked for
+  ---
+  duration_ms: 0.2773
+  type: 'test'
+  ...
+# Subtest: bill portal: a URL pointing anywhere else is refused
+ok 17 - bill portal: a URL pointing anywhere else is refused
+  ---
+  duration_ms: 0.2213
+  type: 'test'
+  ...
+# Subtest: status machine: rejects skipping steps
+ok 18 - status machine: rejects skipping steps
+  ---
+  duration_ms: 0.1708
+  type: 'test'
+  ...
+# Subtest: submit checklist: a complete application has no issues
+ok 19 - submit checklist: a complete application has no issues
+  ---
+  duration_ms: 1.1838
+  type: 'test'
+  ...
+# Subtest: submit checklist: an empty draft reports every gap
+ok 20 - submit checklist: an empty draft reports every gap
+  ---
+  duration_ms: 0.9191
+  type: 'test'
+  ...
+# Subtest: submit checklist: an unasked loan question blocks submission
+ok 21 - submit checklist: an unasked loan question blocks submission
+  ---
+  duration_ms: 0.7281
+  type: 'test'
+  ...
+# Subtest: submit checklist: answering "yes, there is a loan" demands the lender
+ok 22 - submit checklist: answering "yes, there is a loan" demands the lender
+  ---
+  duration_ms: 0.8904
+  type: 'test'
+  ...
+# Subtest: submit checklist: a poor-quality verdict does NOT block submission
+ok 23 - submit checklist: a poor-quality verdict does NOT block submission
+  ---
+  duration_ms: 0.4203
+  type: 'test'
+  ...
+# Subtest: submit checklist: a name mismatch blocks submission
+ok 24 - submit checklist: a name mismatch blocks submission
+  ---
+  duration_ms: 0.9099
+  type: 'test'
+  ...
+# 2026-09-30 14:53:53:5353 [[34mdebug[39m]: [34mUser authenticated: agent@test.local (agent)[39m
+# (node:5576) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# 2026-09-30 14:53:53:5353 [[32minfo[39m]: [32m{[39m
+# [32m  applicationNo: 'SE/APP/2026/0001',[39m
+# [32m  agent: new ObjectId('6abcd528d3d52575dea2dacb')[39m
+# [32m}[39m
+# 2026-09-30 14:53:53:5353 [[31merror[39m]: [31mRedis del error:[39m
+# 2026-09-30 14:53:53:5353 [[31merror[39m]: [31mRedis del error:[39m
+# 2026-09-30 14:53:53:5353 [[32minfo[39m]: [32m{[39m
+# [32m  applicationNo: 'SE/APP/2026/0001',[39m
+# [32m  stage: 'started',[39m
+# [32m  recipient: '6abcd528d3d52575dea2dac9'[39m
+# [32m}[39m
+# 2026-09-30 14:53:53:5353 [[32minfo[39m]: [32m{ host: 'smtp.gmail.com', port: 465, secure: true, service: 'gmail' }[39m
+# 2026-09-30 14:54:30:5430 [[32minfo[39m]: [32m{[39m
+# [32m  to: 'admin@test.local',[39m
+# [32m  subject: 'নতুন আবেদন শুরু — Raj Kumar Dawn (SE/APP/2026/0001)',[39m
+# [32m  messageId: '<b3e20370-e90b-0cd6-c715-f5f2dafe1097@gmail.com>'[39m
+# [32m}[39m
+# 2026-09-30 14:54:30:5430 [[32minfo[39m]: [32m{[39m
+# [32m  applicationNo: 'SE/APP/2026/0001',[39m
+# [32m  stage: 'started',[39m
+# [32m  resubmitted: false,[39m
+# [32m  filedBy: 'agent@test.local',[39m
+# [32m  recipients: 1,[39m
+# [32m  notified: 1,[39m
+# [32m  emailed: 1[39m
+# [32m}[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35m[0mPOST /api/v1/applications [32m201[0m 37416.442 ms - -[0m[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35mPOST /api/v1/applications 201 - 37425ms[39m
+# Subtest: api: a field agent can open an application
+ok 25 - api: a field agent can open an application
+  ---
+  duration_ms: 37489.2054
+  type: 'test'
+  ...
+# 2026-09-30 14:54:30:5430 [[34mdebug[39m]: [34mUser authenticated: agent@test.local (agent)[39m
+# 2026-09-30 14:54:30:5430 [[31merror[39m]: [31mAn application for this consumer already exists (SE/APP/2026/0001, status: draft). Open it instead of creating a new one.[39m
+# 2026-09-30 14:54:30:5430 [[31merror[39m]: [31mAn application for this consumer already exists (SE/APP/2026/0001, status: draft). Open it instead of creating a new one.[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35m[0mPOST /api/v1/applications [33m409[0m 21.008 ms - 755[0m[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35mPOST /api/v1/applications 409 - 22ms[39m
+# Subtest: api: a second application for the same consumer is refused
+ok 26 - api: a second application for the same consumer is refused
+  ---
+  duration_ms: 35.6882
+  type: 'test'
+  ...
+# 2026-09-30 14:54:30:5430 [[34mdebug[39m]: [34mUser authenticated: agent@test.local (agent)[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35m[0mGET /api/v1/applications [32m200[0m 40.452 ms - -[0m[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35mGET /api/v1/applications 200 - 43ms[39m
+# 2026-09-30 14:54:30:5430 [[34mdebug[39m]: [34mUser authenticated: agent2@test.local (agent)[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35m[0mGET /api/v1/applications [32m200[0m 12.536 ms - 153[0m[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35mGET /api/v1/applications 200 - 14ms[39m
+# 2026-09-30 14:54:30:5430 [[34mdebug[39m]: [34mUser authenticated: admin@test.local (admin)[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35m[0mGET /api/v1/applications [32m200[0m 15.758 ms - -[0m[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35mGET /api/v1/applications 200 - 18ms[39m
+# Subtest: api: an agent sees only their own applications
+ok 27 - api: an agent sees only their own applications
+  ---
+  duration_ms: 104.2053
+  type: 'test'
+  ...
+# 2026-09-30 14:54:30:5430 [[34mdebug[39m]: [34mUser authenticated: agent2@test.local (agent)[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35m[0mGET /api/v1/applications/6abcd529d3d52575dea2dacd [32m200[0m 21.816 ms - -[0m[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35mGET /api/v1/applications/6abcd529d3d52575dea2dacd 200 - 27ms[39m
+# Subtest: api: one agent cannot open another agent application by id
+not ok 28 - api: one agent cannot open another agent application by id
+  ---
+  duration_ms: 42.4983
+  type: 'test'
+  location: 'D:\\sulekha_Engineering\\backend\\tests\\application.test.js:529:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    {"success":true,"statusCode":200,"message":"Application fetched","data":{"application":{"address":{"street":"Station Road","village":"Dhuluk","block":"Jamalpur","panchayat":"Dhuluk GP","district":"Purba Bardhaman","pincode":"713301","landmark":"Near the temple"},"deal":{"systemSizeKW":3,"proposalAmount":180000,"intentionToProceed":null},"loan":{"asked":true,"hasExistingLoan":false,"consumerInformed":true},"electricBill":{"portalUrl":"https://portal.wbsedcl.in/irj/go/km/docs/bills/IFRAME/ViewBillWithoutLogin.html","verified":false},"nameMatch":{"verdict":null,"passed":null,"mismatched":[]},"_id":"6abcd529d3d52575dea2dacd","applicationNo":"SE/APP/2026/0001","agent":{"_id":"6abcd528d3d52575dea2dacb","name":"Fiel d Agent","email":"agent@test.local"},"agentNameSnapshot":"Fiel d Agent","consumerName":"Raj Kumar Dawn","aadhaarNumber":"123456789012","panNumber":"ABCDE1234F","phone":"9832261761","email":"raj@example.com","siteType":"tin_shed","status":"draft","isActive":true,"createdBy":"6abcd528d3d52575dea2dacb","updatedBy":"6abcd528d3d52575dea2dacb","documents":[],"statusHistory":[{"status":"draft","at":"2026-09-30T09:23:53.202Z","by":"6abcd528d3d52575dea2dacb"}],"createdAt":"2026-09-30T09:23:53.201Z","updatedAt":"2026-09-30T09:23:53.201Z","__v":0,"fullSiteAddress":"Station Road, Dhuluk, Jamalpur, Dhuluk GP, Purba Bardhaman, 713301","id":"6abcd529d3d52575dea2dacd"},"documents":{"byKind":{},"missing":["aadhaar","panCard","electricBill","rooftopPhoto","landRecord","passbookOrCheque"],"unclear":0,"total":0,"complete":false},"submitIssues":[{"field":"electricBill.consumerId","message":"Consumer ID from the electricity bill is required"},{"field":"electricBill.installationNo","message":"Installation ID from the electricity bill is required"},{"field":"electricBill.fileUrl","message":"Attach the bill downloaded from the portal"},{"field":"documents.aadhaar","message":"Aadhaar card is missing"},{"field":"documents.panCard","message":"PAN card is missing"},{"field":"documents.electricBill","message":"Electricity bill is missing"},{"field":"documents.rooftopPhoto","message":"Rooftop photo is missing"},{"field":"documents.landRecord","message":"Land record is missing"},{"field":"documents.passbookOrCheque","message":"Bank passbook / cheque is missing"},{"field":"nameMatch","message":"Enter the name as printed on the Aadhaar, the passbook and the electricity bill"}]},"timestamp":"2026-09-30T09:24:30.754Z"}
+    
+    200 !== 404
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 404
+  actual: 200
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/sulekha_Engineering/backend/tests/application.test.js:536:10)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# 2026-09-30 14:54:30:5430 [[34mdebug[39m]: [34mUser authenticated: agent@test.local (agent)[39m
+# 2026-09-30 14:54:30:5430 [[31merror[39m]: [31mThe application is not complete yet: 10 item(s) need attention.[39m
+# 2026-09-30 14:54:30:5430 [[31merror[39m]: [31mThe application is not complete yet: 10 item(s) need attention.[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35m[0mPOST /api/v1/applications/6abcd529d3d52575dea2dacd/submit [33m422[0m 12.782 ms - -[0m[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35mPOST /api/v1/applications/6abcd529d3d52575dea2dacd/submit 422 - 18ms[39m
+# Subtest: api: submitting an incomplete application lists what is missing
+ok 29 - api: submitting an incomplete application lists what is missing
+  ---
+  duration_ms: 35.2968
+  type: 'test'
+  ...
+# 2026-09-30 14:54:30:5430 [[34mdebug[39m]: [34mUser authenticated: agent@test.local (agent)[39m
+# 2026-09-30 14:54:30:5430 [[33mwarn[39m]: [33m{[39m
+# [33m  provider: 'local',[39m
+# [33m  destination: 'uploads\\\\applications\\\\aadhaar_1790760270861_2838e908.png'[39m
+# [33m}[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35m[0mPOST /api/v1/applications/6abcd529d3d52575dea2dacd/documents [32m201[0m 75.483 ms - -[0m[39m
+# 2026-09-30 14:54:30:5430 [[35mhttp[39m]: [35mPOST /api/v1/applications/6abcd529d3d52575dea2dacd/documents 201 - 77ms[39m
+# Subtest: api: a poor-quality picture is still accepted, with its verdict recorded
+ok 30 - api: a poor-quality picture is still accepted, with its verdict recorded
+  ---
+  duration_ms: 113.7875
+  type: 'test'
+  ...
+# 2026-09-30 14:54:30:5430 [[34mdebug[39m]: [34mUser authenticated: agent@test.local (agent)[39m
+# 2026-09-30 14:54:31:5431 [[33mwarn[39m]: [33m{[39m
+# [33m  provider: 'local',[39m
+# [33m  destination: 'uploads\\\\applications\\\\bill_1790760270999_cbd76700.png'[39m
+# [33m}[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35m[0mPOST /api/v1/applications/6abcd529d3d52575dea2dacd/documents [32m201[0m 45.185 ms - -[0m[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35mPOST /api/v1/applications/6abcd529d3d52575dea2dacd/documents 201 - 48ms[39m
+# Subtest: api: a 712x489 phone photo is accepted — the size the office actually gets
+ok 31 - api: a 712x489 phone photo is accepted — the size the office actually gets
+  ---
+  duration_ms: 119.29
+  type: 'test'
+  ...
+# 2026-09-30 14:54:31:5431 [[34mdebug[39m]: [34mUser authenticated: agent@test.local (agent)[39m
+# 2026-09-30 14:54:31:5431 [[33mwarn[39m]: [33m{[39m
+# [33m  provider: 'local',[39m
+# [33m  destination: 'uploads\\\\applications\\\\aadhaar_1790760271180_75f806c8.png'[39m
+# [33m}[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35m[0mPOST /api/v1/applications/6abcd529d3d52575dea2dacd/documents [32m201[0m 59.211 ms - -[0m[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35mPOST /api/v1/applications/6abcd529d3d52575dea2dacd/documents 201 - 61ms[39m
+# Subtest: api: a clear picture is accepted and stored
+ok 32 - api: a clear picture is accepted and stored
+  ---
+  duration_ms: 192.9302
+  type: 'test'
+  ...
+# 2026-09-30 14:54:31:5431 [[34mdebug[39m]: [34mUser authenticated: agent@test.local (agent)[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35m[0mPUT /api/v1/applications/6abcd529d3d52575dea2dacd/electric-bill [32m200[0m 22.209 ms - 543[0m[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35mPUT /api/v1/applications/6abcd529d3d52575dea2dacd/electric-bill 200 - 23ms[39m
+# Subtest: api: the electricity bill link points at the board portal
+ok 33 - api: the electricity bill link points at the board portal
+  ---
+  duration_ms: 37.3047
+  type: 'test'
+  ...
+# 2026-09-30 14:54:31:5431 [[34mdebug[39m]: [34mUser authenticated: admin@test.local (admin)[39m
+# 2026-09-30 14:54:31:5431 [[31merror[39m]: [31mRecord the name from the Aadhaar, the passbook and the electricity bill, then run the name check, before approving.[39m
+# 2026-09-30 14:54:31:5431 [[31merror[39m]: [31mRecord the name from the Aadhaar, the passbook and the electricity bill, then run the name check, before approving.[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35m[0mPATCH /api/v1/applications/6abcd529d3d52575dea2dacd/review [33m400[0m 14.964 ms - 741[0m[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35mPATCH /api/v1/applications/6abcd529d3d52575dea2dacd/review 400 - 16ms[39m
+# Subtest: api: approval is refused while the names have not been checked
+ok 34 - api: approval is refused while the names have not been checked
+  ---
+  duration_ms: 35.9118
+  type: 'test'
+  ...
+# 2026-09-30 14:54:31:5431 [[34mdebug[39m]: [34mUser authenticated: admin@test.local (admin)[39m
+# 2026-09-30 14:54:31:5431 [[31merror[39m]: [31mVerify the electricity bill (consumer ID + installation ID) before approving.[39m
+# 2026-09-30 14:54:31:5431 [[31merror[39m]: [31mVerify the electricity bill (consumer ID + installation ID) before approving.[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35m[0mPATCH /api/v1/applications/6abcd529d3d52575dea2dacd/review [33m400[0m 11.895 ms - 665[0m[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35mPATCH /api/v1/applications/6abcd529d3d52575dea2dacd/review 400 - 13ms[39m
+# Subtest: api: an approved application needs a verified bill first
+ok 35 - api: an approved application needs a verified bill first
+  ---
+  duration_ms: 37.3635
+  type: 'test'
+  ...
+# 2026-09-30 14:54:31:5431 [[34mdebug[39m]: [34mUser authenticated: admin@test.local (admin)[39m
+# 2026-09-30 14:54:31:5431 [[32minfo[39m]: [32m{ applicationNo: 'SE/APP/2026/0001', from: 'approved', to: 'approved' }[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35m[0mPATCH /api/v1/applications/6abcd529d3d52575dea2dacd/review [32m200[0m 31.956 ms - -[0m[39m
+# 2026-09-30 14:54:31:5431 [[35mhttp[39m]: [35mPATCH /api/v1/applications/6abcd529d3d52575dea2dacd/review 200 - 36ms[39m
+# Subtest: api: approving needs every required document accepted, then succeeds
+ok 36 - api: approving needs every required document accepted, then succeeds
+  ---
+  duration_ms: 76.3504
+  type: 'test'
+  ...
+# 2026-09-30 14:54:31:5431 [[34mdebug[39m]: [34mUser authenticated: admin@test.local (admin)[39m
+# 2026-09-30 14:54:31:5431 [[33mwarn[39m]: [33m{[39m
+# [33m  provider: 'local',[39m
+# [33m  destination: 'uploads\\\\applications\\\\signed_quotation_1790760271438_2ed97cce.pdf'[39m
+# [33m}[39m
+# 2026-09-30 14:54:31:5431 [[32minfo[39m]: [32m{ applicationNo: 'SE/APP/2026/0001', kind: 'signedQuotation' }[39m
+# 2026-09-30 14:54:31:5431 [[31merror[39m]: [31mRedis del error:[39m
+# 2026-09-30 14:54:31:5431 [[31merror[39m]: [31mRedis del error:[39m
+# 2026-09-30 14:54:31:5431 [[32minfo[39m]: [32m{[39m
+# [32m  applicationNo: 'SE/APP/2026/0001',[39m
+# [32m  kinds: [ 'signedQuotation' ],[39m
+# [32m  recipient: '6abcd528d3d52575dea2dacb'[39m
+# [32m}[39m
+# 2026-09-30 14:54:36:5436 [[32minfo[39m]: [32m{[39m
+# [32m  to: 'agent@test.local',[39m
+# [32m  subject: 'Raj Kumar Dawn-এর স্বাক্ষরিত কোটেশন আপলোড হয়েছে — ডাউনলোড করে গ্রাহককে দিন',[39m
+# [32m  messageId: '<85e9b47c-2e85-d9f6-9caf-b53ee7cd5a95@gmail.com>'[39m
+# [32m}[39m
+# 2026-09-30 14:54:36:5436 [[32minfo[39m]: [32m{[39m
+# [32m  applicationNo: 'SE/APP/2026/0001',[39m
+# [32m  kinds: [ 'signedQuotation' ],[39m
+# [32m  filedBy: 'admin@test.local',[39m
+# [32m  notified: true,[39m
+# [32m  emailSent: true,[39m
+# [32m  emailReason: undefined[39m
+# [32m}[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35m[0mPOST /api/v1/applications/6abcd529d3d52575dea2dacd/signed-document [32m201[0m 4619.439 ms - 541[0m[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35mPOST /api/v1/applications/6abcd529d3d52575dea2dacd/signed-document 201 - 4620ms[39m
+# Subtest: api: the generated PDF is never overwritten when the signed copy comes back
+ok 37 - api: the generated PDF is never overwritten when the signed copy comes back
+  ---
+  duration_ms: 4643.4918
+  type: 'test'
+  ...
+# 2026-09-30 14:54:36:5436 [[34mdebug[39m]: [34mUser authenticated: admin@test.local (admin)[39m
+# 2026-09-30 14:54:36:5436 [[31merror[39m]: [31mCannot move an application from "draft" to "completed".[39m
+# 2026-09-30 14:54:36:5436 [[31merror[39m]: [31mCannot move an application from "draft" to "completed".[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35m[0mPATCH /api/v1/applications/6abcd529d3d52575dea2dacd/status [33m400[0m 14.749 ms - 619[0m[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35mPATCH /api/v1/applications/6abcd529d3d52575dea2dacd/status 400 - 15ms[39m
+# Subtest: api: status cannot skip a step
+ok 38 - api: status cannot skip a step
+  ---
+  duration_ms: 43.7961
+  type: 'test'
+  ...
+# 2026-09-30 14:54:36:5436 [[34mdebug[39m]: [34mUser authenticated: agent@test.local (agent)[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35m[0mGET /api/v1/applications/checklist [32m200[0m 4.338 ms - -[0m[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35mGET /api/v1/applications/checklist 200 - 5ms[39m
+# Subtest: api: the checklist endpoint describes the form
+ok 39 - api: the checklist endpoint describes the form
+  ---
+  duration_ms: 15.3929
+  type: 'test'
+  ...
+# 2026-09-30 14:54:36:5436 [[34mdebug[39m]: [34mUser authenticated: agent@test.local (agent)[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35m[0mGET /api/v1/applications/stats [32m200[0m 17.945 ms - 604[0m[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35mGET /api/v1/applications/stats 200 - 19ms[39m
+# 2026-09-30 14:54:36:5436 [[34mdebug[39m]: [34mUser authenticated: agent2@test.local (agent)[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35m[0mGET /api/v1/applications/stats [32m200[0m 14.145 ms - 385[0m[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35mGET /api/v1/applications/stats 200 - 15ms[39m
+# Subtest: api: the dashboard stats are scoped to the agent
+ok 40 - api: the dashboard stats are scoped to the agent
+  ---
+  duration_ms: 49.494
+  type: 'test'
+  ...
+# 2026-09-30 14:54:36:5436 [[34mdebug[39m]: [34mUser authenticated: viewer@test.local (viewer)[39m
+# 2026-09-30 14:54:36:5436 [[31merror[39m]: [31mAccess denied. Required roles: admin, manager, agent[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35m[0mGET /api/v1/applications [33m403[0m 6.244 ms - -[0m[39m
+# 2026-09-30 14:54:36:5436 [[35mhttp[39m]: [35mGET /api/v1/applications 403 - 8ms[39m
+# Subtest: api: a viewer cannot reach the application module at all
+ok 41 - api: a viewer cannot reach the application module at all
+  ---
+  duration_ms: 20.581
+  type: 'test'
+  ...
+1..41
+# tests 41
+# suites 0
+# pass 40
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 51790.164
