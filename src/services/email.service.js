@@ -2,6 +2,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import net from 'node:net';
+import dns from 'node:dns/promises';
 import nodemailer from 'nodemailer';
 import config from '../config/env.js';
 import logger from '../utils/logger.js';
@@ -147,6 +149,55 @@ const resolveAppUrl = () => {
 export const getAppUrl = resolveAppUrl;
 
 /**
+ * Ports that speak plain SMTP and upgrade with STARTTLS. On these, `secure: true`
+ * means waiting for a TLS handshake the server never starts.
+ */
+const STARTTLS_PORTS = new Set([25, 587, 2525]);
+
+/**
+ * The transport options, built from configuration. Kept separate from
+ * `getTransporter` so the rules below can be tested without a transport.
+ *
+ * Two rules, both of them there to prevent a silent outage:
+ *
+ * 1. **`secure` follows the port, not a flag.** 465 expects implicit TLS;
+ *    587/2525/25 negotiate STARTTLS. An operator who changes the port and leaves
+ *    `SMTP_SECURE=true` behind would otherwise get a transport waiting for a
+ *    handshake that never comes. `SMTP_SECURE` is still honoured on any other port.
+ *
+ * 2. **`service` is not forwarded while host and port are set.** nodemailer merges
+ *    the well-known preset *after* the caller's options
+ *    (`smtp-transport/index.js`: `assign(options, urlData, wellKnown(service))`,
+ *    and `assign` overwrites unconditionally), so `service: 'gmail'` — whose preset
+ *    is `{ host: 'smtp.gmail.com', port: 465, secure: true }` — pins port 465 and
+ *    `secure: true` no matter what `SMTP_PORT` says. That is why switching port
+ *    looked like it did nothing. A preset may fill a blank; it must not overrule an
+ *    explicit value.
+ */
+export const buildTransportOptions = ({
+  host,
+  port,
+  secure,
+  user,
+  password,
+  timeouts = EMAIL_TIMEOUTS,
+} = {}) => {
+  const resolvedPort = Number(port) || 587;
+  const starttls = STARTTLS_PORTS.has(resolvedPort);
+
+  return {
+    host,
+    port: resolvedPort,
+    secure: starttls ? false : secure === true || resolvedPort === 465,
+    auth: { user, pass: password },
+    dnsTimeout: timeouts.dns,
+    connectionTimeout: timeouts.connection,
+    greetingTimeout: timeouts.greeting,
+    socketTimeout: timeouts.socket,
+  };
+};
+
+/**
  * Build (and cache) the SMTP transport.
  *
  * The cache key includes host/port/user so a changed .env does not keep reusing
@@ -159,30 +210,33 @@ const getTransporter = () => {
   const key = [config.SMTP_HOST, config.SMTP_PORT, config.SMTP_USER, config.SMTP_SECURE].join('|');
   if (transporter && transporterConfigKey === key) return transporter;
 
-  const options = {
+  const options = buildTransportOptions({
     host: config.SMTP_HOST,
-    port: Number(config.SMTP_PORT) || 587,
-    // 465 is implicit TLS, 587 is STARTTLS. SMTP_SECURE in .env wins; otherwise
-    // infer from the port so a missing flag cannot silently downgrade to plain.
-    secure: config.SMTP_SECURE === true || Number(config.SMTP_PORT) === 465,
-    auth: {
-      user: config.SMTP_USER,
-      pass: config.SMTP_PASSWORD,
-    },
-  };
+    port: config.SMTP_PORT,
+    secure: config.SMTP_SECURE,
+    user: config.SMTP_USER,
+    password: config.SMTP_PASSWORD,
+  });
 
-  options.dnsTimeout = EMAIL_TIMEOUTS.dns;
-  options.connectionTimeout = EMAIL_TIMEOUTS.connection;
-  options.greetingTimeout = EMAIL_TIMEOUTS.greeting;
-  options.socketTimeout = EMAIL_TIMEOUTS.socket;
+  if (options.secure !== (config.SMTP_SECURE === true)) {
+    logger.warn(
+      { port: options.port, requestedSecure: config.SMTP_SECURE === true, usingSecure: options.secure },
+      'SMTP_SECURE contradicts the port, so the port decides (465 is implicit TLS; 587/2525/25 use STARTTLS)'
+    );
+  }
 
-  if (config.SMTP_SERVICE) options.service = config.SMTP_SERVICE;
+  if (config.SMTP_SERVICE) {
+    logger.warn(
+      { service: config.SMTP_SERVICE },
+      'SMTP_SERVICE is ignored: SMTP_HOST/SMTP_PORT/SMTP_SECURE are explicit, and the preset would override them'
+    );
+  }
 
   transporter = nodemailer.createTransport(options);
   transporterConfigKey = key;
 
   logger.info(
-    { host: options.host, port: options.port, secure: options.secure, service: options.service },
+    { host: options.host, port: options.port, secure: options.secure },
     'Email transport configured'
   );
 
@@ -243,6 +297,106 @@ export const verifyEmailTransport = async () => {
   } catch (error) {
     return { ok: false, reason: explainSendFailure(error) };
   }
+};
+
+/**
+ * How long one reachability attempt may take. Short, because this is a diagnostic
+ * somebody is waiting on, and long enough for a healthy server to answer.
+ */
+const PROBE_TIMEOUT_MS = 4000;
+
+/** Can a TCP connection be opened to this address and port? */
+const probeTcp = (address, port) =>
+  new Promise((resolve) => {
+    const started = Date.now();
+    const socket = net.connect({ host: address, port });
+
+    const finish = (result) => {
+      socket.destroy();
+      resolve({ address, port, ms: Date.now() - started, ...result });
+    };
+
+    socket.setTimeout(PROBE_TIMEOUT_MS);
+    socket.once('connect', () => finish({ ok: true }));
+    socket.once('timeout', () => finish({ ok: false, code: 'ETIMEDOUT' }));
+    socket.once('error', (error) => finish({ ok: false, code: error.code || 'ERROR', message: error.message }));
+  });
+
+/**
+ * Addresses of one family, or none. A failure here is not an error worth raising.
+ *
+ * Two resolvers, in the order `nodemailer` uses them: `resolve()` asks the DNS
+ * server directly (c-ares), and `lookup()` goes through the operating system. The
+ * second is not decoration — on a network where direct DNS queries are blocked,
+ * `resolve()` returns nothing at all, and without the fallback this probe would
+ * report "no addresses" exactly when it is most needed.
+ */
+const resolveFamily = async (host, family) => {
+  try {
+    const addresses = await dns.resolve(host, family === 4 ? 'A' : 'AAAA');
+    if (addresses && addresses.length) return addresses;
+  } catch {
+    /* fall through to the operating system's resolver */
+  }
+
+  try {
+    const addresses = await dns.lookup(host, { all: true, family });
+    return (addresses || []).map((entry) => entry.address);
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Is the mail port reachable *from this host*? The question a mail failure cannot
+ * answer on its own.
+ *
+ * `sendMail` reports one error, and that error is the last of several attempts
+ * (`nodemailer` resolves both families, tries one, then the other), so it cannot
+ * distinguish "the port is blocked" from "the IPv6 route is missing" from "the
+ * credentials are wrong". This opens a plain TCP connection to the configured host
+ * on both families and on the port that is the usual alternative, and reports each
+ * separately — which turns a guess into a reading.
+ *
+ * Read-only and target-fixed: the host and port come from the configuration, never
+ * from the caller, so it cannot be pointed at anything else.
+ *
+ * @returns {Promise<Object>}
+ */
+export const probeMailEndpoints = async () => {
+  const host = config.SMTP_HOST;
+  const port = Number(config.SMTP_PORT) || 587;
+
+  if (!host) return { configured: false, host: null, port: null, attempts: [] };
+
+  const [ipv4, ipv6] = await Promise.all([resolveFamily(host, 4), resolveFamily(host, 6)]);
+
+  const attempts = [];
+  if (ipv4[0]) attempts.push(probeTcp(ipv4[0], port));
+  if (ipv6[0]) attempts.push(probeTcp(ipv6[0], port));
+
+  // One filtered port does not mean every port is filtered, and finding that out
+  // should not need a redeploy.
+  const alternate = port === 587 ? 465 : 587;
+  if (ipv4[0]) attempts.push(probeTcp(ipv4[0], alternate));
+
+  const results = await Promise.all(attempts);
+
+  return {
+    configured: true,
+    host,
+    port,
+    alternatePort: alternate,
+    secure: config.SMTP_SECURE === true || port === 465,
+    addresses: { ipv4: ipv4.slice(0, 2), ipv6: ipv6.slice(0, 2) },
+    attempts: results.map((result) => ({
+      endpoint: `${result.address}:${result.port}`,
+      family: result.address.includes(':') ? 'IPv6' : 'IPv4',
+      ok: result.ok,
+      ...(result.ok ? {} : { code: result.code, message: result.message }),
+      ms: result.ms,
+    })),
+  };
 };
 
 // ============================================================

@@ -12,6 +12,7 @@ import { rateLimiter } from './middlewares/rateLimiter.js';
 import { authenticate } from './middlewares/auth.js';
 import { describeChrome } from './services/chromeLaunch.js';
 import { buildCorsOptions, warnOnRefusedOrigin } from './config/cors.js';
+import { probeMailEndpoints } from './services/email.service.js';
 import routes from './routes/index.js';
 
 // Initialize Express
@@ -162,6 +163,29 @@ app.get('/health/renderer', async (req, res) => {
       ready: false,
       error: error.message,
     });
+  }
+});
+
+/**
+ * Mail reachability — the answer to "another project sends mail from Render, why
+ * does this one not?".
+ *
+ * A send failure cannot answer it on its own: `nodemailer` resolves both address
+ * families, tries one and then the other, and reports only the *last* attempt. So
+ * a single error cannot tell "the port is blocked" from "there is no IPv6 route"
+ * from "the credentials are wrong". This opens a plain TCP connection from this
+ * host to the configured mail host on both families and on the alternative port,
+ * and reports each attempt separately.
+ *
+ * Read-only, and the target comes from the configuration rather than the request,
+ * so it cannot be pointed anywhere else. Answers 200 for the same reason as the
+ * renderer probe above.
+ */
+app.get('/health/mail', async (req, res) => {
+  try {
+    res.status(200).json({ status: 'ok', ...(await probeMailEndpoints()) });
+  } catch (error) {
+    res.status(200).json({ status: 'ok', error: error.message });
   }
 });
 

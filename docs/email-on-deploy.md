@@ -91,6 +91,95 @@ blindly — it skips a localhost entry, so the link is right even without the
 variable — but the variable is what should decide it, and the boot log warns when it
 is missing.
 
+## "Another project sends mail from Render — why does this one not?"
+
+A single send failure cannot answer that. `nodemailer` resolves both address
+families, tries one and then the other, and reports only the **last** attempt — so
+one error stands for several different causes. Compare the two services instead:
+
+| Fact to compare | Where to look |
+|---|---|
+| Instance type (Free / paid) | Render → the service → Settings |
+| Region | same page |
+| `SMTP_PORT`, `SMTP_SECURE`, `SMTP_SERVICE` | Environment |
+| Whether it uses SMTP at all, or an HTTPS API | Environment: a key like `RESEND_API_KEY`, `BREVO_API_KEY`, `SENDGRID_API_KEY` |
+| Age of the service | Events: the SMTP block was rolled out on a date, and a service created before it may predate it |
+
+### What a working project actually does differently
+
+A second project of ours (`rentease_backend`) sends from the same Gmail account on a
+deployed host. Its transport, read from its source:
+
+```js
+nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT) || 587,   // ← defaults to 587
+  secure: process.env.SMTP_SECURE === 'true',     // ← false unless asked
+  auth: { user, pass }, pool: true, …
+});
+```
+
+Three differences matter, and the library version is not one of them — nodemailer 8
+there and 10 here resolve both address families the same way (both checked:
+`isFamilySupported`, a random pick from the resolved list, `dns.lookup` fallback):
+
+1. **No `service` preset.**
+2. **The port comes from the environment and defaults to 587** — STARTTLS.
+3. `secure` is false unless the environment says otherwise.
+
+So it speaks STARTTLS on 587 where this project speaks implicit TLS on 465. On a
+host that filters one of those ports, that single difference decides which project
+can send mail — which is precisely the reading `GET /health/mail` produces, since it
+probes 587 as well as the configured port.
+
+### Two traps that made changing the port look useless
+
+Both were in our own code, and both are now handled:
+
+| Trap | What happened | Now |
+|---|---|---|
+| `service: 'gmail'` | nodemailer merges the preset **after** the caller's options (`smtp-transport/index.js` → `assign(options, urlData, wellKnown(service))`, and `assign` overwrites unconditionally), so the preset's `{ host: 'smtp.gmail.com', port: 465, secure: true }` won and `SMTP_PORT=587` was ignored | `service` is not forwarded while host and port are explicit; the log says when it is ignored |
+| `SMTP_SECURE` vs the port | leaving `secure: true` behind while moving to 587 waits for a TLS handshake the server never starts | the port decides — 465 implicit TLS, 587/2525/25 STARTTLS — and a mismatch is logged |
+
+### `GET /health/mail`
+
+The decisive reading, taken from the host that is failing. It opens a plain TCP
+connection to the configured mail host on **both** address families and on the
+alternative port, and reports each attempt separately:
+
+```json
+{
+  "host": "smtp.gmail.com", "port": 465, "alternatePort": 587,
+  "attempts": [
+    { "endpoint": "192.178.211.108:465", "family": "IPv4", "ok": true, "ms": 255 },
+    { "endpoint": "2404:6800:...:6d:465", "family": "IPv6", "ok": true, "ms": 253 },
+    { "endpoint": "192.178.211.108:587", "family": "IPv4", "ok": true, "ms": 253 }
+  ]
+}
+```
+
+| Reading | Meaning |
+|---|---|
+| every attempt `ok: true` | the host reaches the mail server — the port is not the problem. An `EAUTH` on the next send means credentials (a Gmail *app password*, not the account password) |
+| IPv4 fails, IPv6 `ENETUNREACH` | the failure in this document: the port is filtered and the container has no IPv6 route |
+| configured port fails, `:587` succeeds | change `SMTP_PORT` — one filtered port does not mean a filtered host |
+| only IPv6 fails | harmless on its own, IPv4 is tried too |
+
+Read-only, and the target comes from the configuration rather than the request, so
+it cannot be pointed at anything else — which also means the same JSON can be
+fetched from any machine once the deploy is live:
+
+```bash
+curl -s https://<api-host>/health/mail
+```
+
+One thing to keep honest: the port-blocking claim above comes from Render's
+community threads and reports quoting its notice, not from a documentation page
+(the one that would settle it returns 404 for us). If a *free* service in another
+account can reach `smtp.gmail.com:465`, the rollout is not uniform — an older
+service may simply predate it — and the table and endpoint above are the only
+honest way to settle which service is which.
+
 ## Remedies for a blocked port
 
 | Option | Cost | Code change |
@@ -107,6 +196,8 @@ existing code. Check the provider's own port table first.
 
 After a change, in this order:
 
+0. `GET /health/mail` → every attempt should read `ok: true`. If it does not, stop
+   here: no environment variable will get past a port the host cannot reach.
 1. `/agents` → the warning banner should be gone.
 2. **Test connection** → `SMTP connection is working`.
 3. Create a test agent → the response says the credentials were emailed, and the
