@@ -180,17 +180,82 @@ account can reach `smtp.gmail.com:465`, the rollout is not uniform — an older
 service may simply predate it — and the table and endpoint above are the only
 honest way to settle which service is which.
 
+## Measured on the free instance (1 Oct 2026)
+
+`GET /health/mail` on the deployed service, with `SMTP_PORT=587`:
+
+```json
+{"host":"smtp.gmail.com","port":587,"secure":false,
+ "attempts":[
+   {"endpoint":"173.194.43.108:587","family":"IPv4","ok":false,"code":"ETIMEDOUT","ms":4001},
+   {"endpoint":"2607:f8b0:400e:c1e::6c:587","family":"IPv6","ok":false,"code":"ENETUNREACH","ms":0},
+   {"endpoint":"173.194.43.108:465","family":"IPv4","ok":false,"code":"ETIMEDOUT","ms":4000}]}
+```
+
+**Both 465 and 587 are dropped, and IPv6 has no route.** So on this instance the
+port is not the variable — changing it only changes which timeout you get, which is
+what the two ETIMEDOUTs above show. A send therefore fails with `Connection timeout`
+after the transport's own 10 s limit, and the earlier `ENETUNREACH` was that same
+failure with the IPv6 fallback named last.
+
+There is a useful asymmetry here, though: this service reaches MongoDB (27017) and
+Redis (6379) fine, so outbound TCP is not blocked in general — only the SMTP ports
+are. That is what makes the HTTPS and 2525 options below work rather than being
+hopeful.
+
+## What worked (1 Oct 2026)
+
+The free instance reaches **no** SMTP port, so the relay is reached on the port that
+is not an SMTP port. Final configuration on the service (all verified against the
+live build by `GET /health/mail`, not just against the dashboard):
+
+```
+EMAIL_ENABLED = true
+SMTP_HOST     = smtp-relay.brevo.com
+SMTP_PORT     = 2525           ← 587 and 465 are both dropped
+SMTP_SECURE   = false          ← 2525 is STARTTLS
+SMTP_USER     = 7ae9d8001@smtp-brevo.com
+SMTP_PASSWORD = <Brevo SMTP key>
+SMTP_FROM     = <a sender verified in Brevo>   ← Brevo rejects an unverified sender
+SMTP_SERVICE  = removed        ← the Gmail preset would override the port above
+```
+
+Measured from the deployed host:
+
+```json
+{"host":"smtp-relay.brevo.com","port":2525,"secure":false,
+ "attempts":[
+   {"endpoint":"1.179.119.1:2525","family":"IPv4","ok":true,"ms":26},
+   {"endpoint":"1.179.119.1:587","family":"IPv4","ok":false,"code":"ETIMEDOUT","ms":4000}]}
+```
+
+`2525` answers in 26 ms while `587` still times out on the same host and IP — the
+block is by port, not by destination, which is why a relay on 2525 is the fix and
+Gmail on 587/465 never was.
+
+Two Brevo-specific traps met on the way, both outside our code:
+
+| Trap | Symptom | Fix |
+|---|---|---|
+| **"Block unauthorized IP addresses"** (Settings → Security → Authorized IPs, separate toggles for API and SMTP keys) was **on** | `525 5.7.1 Unauthorized IP address` at AUTH, on every port | turn it off for SMTP keys — a host with changing outbound IPs can never be allow-listed |
+| A freemail sender (gmail.com) and no authenticated domain | deliverability: mail can land in spam | add and verify the sender at minimum; authenticate a domain for anything serious |
+
 ## Remedies for a blocked port
 
-| Option | Cost | Code change |
-|---|---|---|
-| Upgrade the Render instance to any paid type | $ | none |
-| Send through an HTTPS email API (Resend, Brevo, SendGrid…) | free tiers exist | a small transport addition |
-| Send through an SMTP relay that also listens on **port 2525** | free tiers exist | none — env only |
+| Option | Cost | Code change | Confidence |
+|---|---|---|---|
+| Send through an **HTTPS email API** (Resend, Brevo, SendGrid…) over 443 | free tiers exist | a small transport addition | works — the same host already reaches 443/27017/6379 |
+| Send through an SMTP relay that also listens on **port 2525** | free tiers exist | none — env only | very likely — 25/465/587 are the documented block, not 2525; the provider must offer 2525 |
+| Upgrade the Render instance to any paid type | $ | none | works |
 
-The third is the cheapest way out on a free instance: only 25/465/587 are blocked,
-so pointing `SMTP_HOST`/`SMTP_PORT` at a relay's 2525 endpoint works with the
-existing code. Check the provider's own port table first.
+Ordered by what to try first, not by cost alone: the HTTPS API is the only one that
+does not depend on the host leaving any SMTP port open.
+
+**This also settles `rentease_backend`.** It sends from the same Gmail account, so
+the credentials are fine — but its transport uses `port: SMTP_PORT || 587`, and 587
+is dropped here. Its host must therefore differ in a way that is not the port: a paid
+instance, another host, another account/region, or an HTTPS provider. Comparing that
+service's instance type and `SMTP_PORT` is the way to finish the comparison.
 
 ## Verifying
 

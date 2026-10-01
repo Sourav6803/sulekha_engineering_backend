@@ -18,6 +18,7 @@ import {
   listApplicationsQuerySchema,
   applicationIdParamSchema,
   documentParamSchema,
+  creditCheckPreviewSchema,
 } from '../validations/application.validation.js';
 
 const router = Router();
@@ -62,6 +63,30 @@ router.get('/checklist', authorize(...READ_ROLES), asyncHandler(applicationContr
 
 /** GET /api/v1/applications/stats — the agent / office dashboard numbers. */
 router.get('/stats', authorize(...READ_ROLES), asyncHandler(applicationController.getStats));
+
+/**
+ * GET /api/v1/applications/lender-criteria
+ * The per-lender credit rules. Declared before /:id, like /checklist, so
+ * "lender-criteria" is never read as an application id.
+ */
+router.get(
+  '/lender-criteria',
+  authorize(...READ_ROLES),
+  asyncHandler(applicationController.getLenderCriteria)
+);
+
+/**
+ * POST /api/v1/applications/credit-check
+ * The credit verdict for a consumer's answers before an application exists.
+ * Nothing is stored and nothing is refused — a doubtful verdict comes back as a
+ * notice for the agent, because the flow must never stop here.
+ */
+router.post(
+  '/credit-check',
+  authorize(...FIELD_AGENT_ROLES),
+  validate(creditCheckPreviewSchema),
+  asyncHandler(applicationController.previewCreditCheck)
+);
 
 /** GET /api/v1/applications — agents see their own, the office sees all. */
 router.get(

@@ -7,6 +7,7 @@ import {
   APPLICATION_STATUSES,
   BILL_PORTAL_URL,
 } from '../data/applicationChecklist.js';
+import { LENDERS, SCHEME_WIDE_RULES, SCORE_MAX, LOAN_SLAB_LIMIT } from '../data/lenderCriteria.js';
 
 /**
  * Application controller — thin HTTP layer over applicationService.
@@ -37,6 +38,36 @@ export const listApplications = async (req, res) => {
   const { items, pagination } = await applicationService.listApplications(req.query, req.user);
 
   return ApiResponse.sendPaginated(res, items, pagination, 'Applications fetched');
+};
+
+/**
+ * GET /api/v1/applications/lender-criteria
+ * The credit rules per lender, so the client shows the numbers the server actually
+ * compares against instead of keeping a second copy of them that can drift.
+ */
+export const getLenderCriteria = async (req, res) => {
+  return ApiResponse.send(
+    res,
+    {
+      lenders: LENDERS,
+      schemeWideRules: SCHEME_WIDE_RULES,
+      scoreMax: SCORE_MAX,
+      slabLimit: LOAN_SLAB_LIMIT,
+    },
+    'Lender credit criteria'
+  );
+};
+
+/**
+ * POST /api/v1/applications/credit-check
+ * The verdict for a consumer's answers before an application exists. Nothing is
+ * written — this is the check an agent may run at the door, so it must not be able
+ * to fail in a way that stops an application being made.
+ */
+export const previewCreditCheck = async (req, res) => {
+  const verdict = applicationService.previewCreditCheck(req.body);
+
+  return ApiResponse.send(res, verdict, 'Credit check');
 };
 
 /** GET /api/v1/applications/stats — the agent dashboard numbers. */

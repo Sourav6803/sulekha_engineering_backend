@@ -229,6 +229,38 @@ const ApplicationSchema = new Schema(
       remark: { type: String, trim: true, maxlength: 1000 },
     },
 
+    /**
+     * The consumer's credit position, as the agent was able to confirm it.
+     *
+     * Not a gate anywhere: a vendor cannot pull a bureau score, so this records
+     * what was asked, how it was answered, and what `assessCredit()` made of it.
+     * Every field is optional and no submit check reads this block — a doubtful
+     * score is a warning shown to the agent, never a reason to hold a record.
+     */
+    creditCheck: {
+      /** Lender the loan is expected from; matches a code in data/lenderCriteria.js. */
+      bank: { type: String, trim: true, uppercase: true, maxlength: 40 },
+      method: {
+        type: String,
+        enum: ['consumer_self_check', 'bank_portal', 'agent_estimate', 'other'],
+        default: 'consumer_self_check',
+      },
+      score: { type: Number, min: 0, max: 900, default: null },
+      defaultOrWriteOff: { type: Boolean, default: false },
+      newToCredit: { type: Boolean, default: false },
+      /** Recomputed by the server; the client's opinion is never trusted. */
+      status: {
+        type: String,
+        enum: ['pass', 'review', 'fail', 'not_checked'],
+        default: 'not_checked',
+      },
+      headline: { type: String, trim: true, maxlength: 300 },
+      detail: { type: String, trim: true, maxlength: 600 },
+      checkedAt: Date,
+      checkedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+      note: { type: String, trim: true, maxlength: 500 },
+    },
+
     // ------------------------------------------------------------- documents
     documents: [ApplicationDocumentSchema],
 

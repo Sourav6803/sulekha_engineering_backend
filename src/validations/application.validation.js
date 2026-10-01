@@ -82,6 +82,31 @@ const nameMatchSchema = Joi.object({
   electricBillName: Joi.string().trim().max(150).allow('', null),
 });
 
+/**
+ * The credit answer — shape only. The server decides what it means.
+ *
+ * Deliberately permissive: this must never be able to reject an application, so
+ * every field accepts an empty value and `assessCredit()` turns whatever arrives
+ * into a notice. `status`, `headline`, `detail` and the audit fields are
+ * server-owned and are dropped by `stripUnknown`.
+ */
+const creditCheckSchema = Joi.object({
+  bank: Joi.string().trim().uppercase().max(40).allow('', null),
+  method: Joi.string().valid('consumer_self_check', 'bank_portal', 'agent_estimate', 'other'),
+  score: Joi.number().integer().min(0).max(900).allow(null, ''),
+  defaultOrWriteOff: Joi.boolean(),
+  newToCredit: Joi.boolean(),
+  note: Joi.string().trim().max(500).allow('', null),
+});
+
+/**
+ * The pre-check body: the same credit answer plus the project cost being judged,
+ * because the ₹2 lakh line decides which of a lender's two rules applies.
+ */
+export const creditCheckPreviewSchema = creditCheckSchema.keys({
+  amount: Joi.number().min(0).max(100000000).allow(null, ''),
+});
+
 // ==================== CREATE / UPDATE ====================
 
 export const createApplicationSchema = Joi.object({
@@ -101,6 +126,7 @@ export const createApplicationSchema = Joi.object({
   deal: dealSchema,
   loan: loanSchema,
   nameMatch: nameMatchSchema,
+  creditCheck: creditCheckSchema,
 
   customer: objectId.allow(null),
 });
@@ -120,6 +146,7 @@ export const updateApplicationSchema = Joi.object({
   deal: dealSchema,
   loan: loanSchema,
   nameMatch: nameMatchSchema,
+  creditCheck: creditCheckSchema,
 }).min(1);
 
 // ==================== ELECTRIC BILL ====================

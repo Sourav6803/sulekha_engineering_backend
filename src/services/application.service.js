@@ -4,6 +4,7 @@ import logger from '../utils/logger.js';
 import { ApiError } from '../utils/ApiError.js';
 import { escapeRegex } from '../utils/escapeRegex.js';
 import { checkNameMatch } from '../utils/nameMatch.js';
+import { assessCredit } from '../data/lenderCriteria.js';
 import { checkImageQuality, isImageMimeType } from './imageQuality.service.js';
 import { storeDocument, removeDocument } from './documentStorage.service.js';
 import { notifyAgentOfSignedDocument } from './signedDocumentNotice.service.js';
@@ -392,6 +393,10 @@ class ApplicationService {
       application.nameMatch = this.computeNameMatch(body.nameMatch, body.consumerName, user);
     }
 
+    if (body.creditCheck) {
+      application.creditCheck = this.buildCreditCheck(body.creditCheck, body.deal?.proposalAmount, user);
+    }
+
     await application.save();
 
     logger.info({ applicationNo, agent: user._id }, 'Application created');
@@ -445,6 +450,25 @@ class ApplicationService {
       application.loan = { ...application.loan?.toObject?.() ?? application.loan ?? {}, ...body.loan };
     }
 
+    if (body.creditCheck) {
+      application.creditCheck = this.buildCreditCheck(
+        { ...(application.creditCheck?.toObject?.() ?? application.creditCheck ?? {}), ...body.creditCheck },
+        application.deal?.proposalAmount,
+        user
+      );
+    } else if (body.deal && application.creditCheck?.checkedAt) {
+      /*
+       * The ₹2 lakh line splits the rule at every lender, so a changed project
+       * cost can turn a pass into a warning. Recompute instead of leaving a stale
+       * verdict in front of the office.
+       */
+      application.creditCheck = this.buildCreditCheck(
+        application.creditCheck.toObject?.() ?? application.creditCheck,
+        application.deal?.proposalAmount,
+        user
+      );
+    }
+
     if (body.nameMatch) {
       application.nameMatch = this.computeNameMatch(
         { ...(application.nameMatch?.toObject?.() ?? {}), ...body.nameMatch },
@@ -472,6 +496,45 @@ class ApplicationService {
     await application.save();
 
     return application;
+  }
+
+  /**
+   * The stored credit verdict.
+   *
+   * The server owns `status`, `headline` and `detail`: a client may send only the
+   * answer — the bank, the score and the two flags — and whatever it says about
+   * the verdict is overwritten here.
+   */
+  buildCreditCheck(input = {}, amount, user) {
+    const { status, headline, detail } = assessCredit({ amount, creditCheck: input });
+
+    const rawScore = input.score;
+    const hasScore = rawScore !== '' && rawScore !== null && rawScore !== undefined;
+
+    return {
+      bank: input.bank || null,
+      method: input.method || 'consumer_self_check',
+      score: hasScore ? Number(rawScore) : null,
+      defaultOrWriteOff: input.defaultOrWriteOff === true,
+      newToCredit: input.newToCredit === true,
+      note: input.note || null,
+      status,
+      headline,
+      detail,
+      checkedAt: new Date(),
+      checkedBy: user?._id ?? null,
+    };
+  }
+
+  /**
+   * The same verdict without a document — this is what the pre-check asks before
+   * an application exists. Nothing is stored, so it cannot hold anything up.
+   */
+  previewCreditCheck(input = {}) {
+    return assessCredit({
+      amount: input.amount ?? input.proposalAmount,
+      creditCheck: input,
+    });
   }
 
   /** Recompute and store the name verdict. */
