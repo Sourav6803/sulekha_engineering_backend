@@ -35,6 +35,9 @@ export const notificationService = {
         // Update existing notification with latest stock info
         existing.message = this.buildLowStockMessage(material, currentStock, reorderLevel);
         await existing.save({ session });
+        // The message changed, so the cached page holds the old wording.
+        await redisDel('notifications:list:*');
+        await redisDel('notifications:unified:*');
         return existing;
       }
 
@@ -51,6 +54,15 @@ export const notificationService = {
           materialCode: material.materialCode,
         },
       }], { session });
+
+      /*
+       * The two feed caches are dropped by the other creation paths and were missed
+       * here. Without it a low-stock alert is stored but stays invisible behind a
+       * cached page for up to an hour — the one case where the notification exists
+       * and the bell still says nothing.
+       */
+      await redisDel('notifications:list:*');
+      await redisDel('notifications:unified:*');
 
       logger.warn(`Low stock notification created for ${material.name} (${material.materialCode})`);
 

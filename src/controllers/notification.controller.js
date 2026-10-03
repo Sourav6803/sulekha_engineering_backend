@@ -278,6 +278,12 @@ export const markAsRead = async (req, res) => {
 
   await redisDel(`notification:${id}`);
   await redisDel('notifications:list:*');
+  /*
+   * The unified feed is a second cache of the same rows. Leaving it out is what
+   * let a notification read here come back as unread from that endpoint until the
+   * hour was up — which the bell now reads.
+   */
+  await redisDel('notifications:unified:*');
 
   return ApiResponse.send(res, notification, 'Notification marked as read');
 };
@@ -294,6 +300,8 @@ export const markAllAsRead = async (req, res) => {
   );
 
   await redisDel('notifications:list:*');
+  // See markAsRead: the unified endpoint caches the same rows separately.
+  await redisDel('notifications:unified:*');
 
   return ApiResponse.send(res, null, 'All notifications marked as read');
 };
@@ -339,9 +347,18 @@ export const getUnifiedNotifications = async (req, res) => {
     Notification.countDocuments(internalFilter),
   ]);
 
+  /*
+   * Every entry leaves with an `_id`, because both clients key their lists on it.
+   * Internal rows already have one; the external scheme feed carries `id` instead,
+   * so without this the external entries reach React with an undefined key — which
+   * only became visible once the feed started rendering at all.
+   */
   const combined = [
     ...internalNotifications.map(n => ({ ...n, _id: n._id?.toString() })),
-    ...externalNotifications,
+    ...externalNotifications.map((n, index) => ({
+      ...n,
+      _id: String(n._id ?? n.id ?? `external-${index}`),
+    })),
   ].sort((a, b) => new Date(b.createdAt || b.publishedAt).getTime() - new Date(a.createdAt || a.publishedAt).getTime());
 
   const pagination = {
