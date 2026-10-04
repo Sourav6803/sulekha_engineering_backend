@@ -324,7 +324,10 @@ export const uploadCustomerDocument = async (req, res) => {
     'agreement',
     'quotation',
     'dcrCertificate',
-    'panelSerialNumber'
+    'panelSerialNumber',
+    'eToken',
+    'acknowledgement',
+    'netMetering'
   ];
 
   if (!validTypes.includes(type)) {

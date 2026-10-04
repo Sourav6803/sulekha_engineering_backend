@@ -207,7 +207,12 @@ const CustomerSchema = new Schema({
         'agreement',
         'quotation',
         'dcrCertificate',
-        'panelSerialNumber'
+        'panelSerialNumber',
+        // The paperwork that comes back from the government side of the process,
+        // filed against the customer once it arrives.
+        'eToken',
+        'acknowledgement',
+        'netMetering'
       ]
     },
     url: {
@@ -229,6 +234,24 @@ const CustomerSchema = new Schema({
       default: Date.now
     }
   }],
+
+  /**
+   * The serial number of every panel installed, in the order it was recorded.
+   *
+   * Text rather than another document: the numbers are read off the panel labels
+   * during installation and typed in, and are read back later when the DCR and
+   * net-metering paperwork is filed — where a list that can be copied and searched
+   * is worth more than a photograph. There is one entry per panel, so how long the
+   * list is follows the system size: a 3 kW roof takes six 550 Wp panels, a 1 kW
+   * roof two. Free length for that reason, not a fixed slot per size.
+   *
+   * Trimmed and length-checked by the request schema; a plain string array here so
+   * queries over the serials stay simple.
+   */
+  panelSerialNumbers: {
+    type: [String],
+    default: undefined
+  },
 
   // Metadata
   isActive: {

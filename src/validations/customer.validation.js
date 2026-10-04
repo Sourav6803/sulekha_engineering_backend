@@ -4,6 +4,26 @@ import Joi from 'joi';
 const roofType = Joi.string().valid('rcc_rooftop', 'tin_shed', 'ground_mount');
 const customerStatus = Joi.string().valid('active', 'inactive', 'blocked', 'pending_verification');
 
+/**
+ * Panel serial numbers, one entry per panel.
+ *
+ * Blank rows are dropped rather than rejected: the client sends what the installer
+ * typed into a row of inputs, and a half-filled row is a normal thing to submit,
+ * not a bad request. Length is capped because the list follows the system size —
+ * the biggest roof this app handles is a few dozen panels, never a hundred.
+ */
+const panelSerialNumbers = Joi.array()
+  /*
+   * `.allow('')` is load-bearing. Without it `Joi.string()` refuses an empty item,
+   * so the blank row an installer leaves behind — the normal state of a partly
+   * filled list — came back as a 400 instead of being dropped by the filter below.
+   * Trim runs first, so a row of spaces is emptied and then filtered too.
+   */
+  .items(Joi.string().trim().max(60).allow(''))
+  .max(100)
+  .custom((values) => values.filter((value) => value !== ''));
+
+
 export const createCustomerValidation = Joi.object({
   name: Joi.string()
     .required()
@@ -79,6 +99,7 @@ export const createCustomerValidation = Joi.object({
   preferredTimeSlot: Joi.string().valid('morning', 'afternoon', 'evening', 'anytime'),
   notes: Joi.string().max(1000),
   referredBy: Joi.string().max(100),
+  panelSerialNumbers,
 });
 
 export const updateCustomerValidation = Joi.object({
@@ -106,6 +127,7 @@ export const updateCustomerValidation = Joi.object({
   status: customerStatus,
   notes: Joi.string().max(1000),
   referredBy: Joi.string().max(100),
+  panelSerialNumbers,
 });
 
 export const listCustomersValidation = Joi.object({
@@ -163,7 +185,10 @@ export const uploadDocumentBodyValidation = Joi.object({
     'agreement',
     'quotation',
     'dcrCertificate',
-    'panelSerialNumber'
+    'panelSerialNumber',
+    'eToken',
+    'acknowledgement',
+    'netMetering'
   ).required()
 });
 
