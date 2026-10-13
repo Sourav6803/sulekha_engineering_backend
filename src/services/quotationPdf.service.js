@@ -420,8 +420,16 @@ const renderSectionedItemRows = (items) => {
     .join('');
 };
 
-/** 6 -> "6", 1.5 -> "1.5" */
+/**
+ * 6 -> "6", 1.5 -> "1.5", "5/6" -> "5/6".
+ *
+ * A quantity may be a pair while the panel tally is still open (see
+ * utils/quotationQuantity.js). Text is printed exactly as it was entered —
+ * running it through Number() would silently blank the cell, because "5/6" is
+ * not a number.
+ */
 const formatQty = (value) => {
+  if (typeof value === 'string') return value.trim();
   const n = Number(value);
   if (!Number.isFinite(n)) return '';
   return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));

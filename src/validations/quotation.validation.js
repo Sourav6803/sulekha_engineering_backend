@@ -1,5 +1,6 @@
 // src/validations/quotation.validation.js
 import Joi from 'joi';
+import { MAX_QTY_LENGTH, QTY_EXPRESSION_PATTERN, normaliseQty } from '../utils/quotationQuantity.js';
 
 const objectId = Joi.string().hex().length(24);
 
@@ -38,10 +39,27 @@ const itemSchema = Joi.object({
   brandModel: Joi.string().trim().max(120).allow(''),
   /** Partner sheet only; blank on the domestic sheet. */
   specification: Joi.string().trim().max(400).allow(''),
-  qty: Joi.number().min(0.001).required().messages({
-    'any.required': 'Each BOQ line needs a quantity',
-    'number.min': 'BOQ quantity must be greater than 0',
-  }),
+  /**
+   * A number, or a pair such as "5/6" while the count is still open. The
+   * expression form is accepted only if the model would accept it too — both
+   * read the same pattern from utils/quotationQuantity.js.
+   */
+  qty: Joi.alternatives()
+    .try(
+      Joi.number().min(0.001),
+      Joi.string()
+        .trim()
+        .max(MAX_QTY_LENGTH)
+        .custom((value, helpers) =>
+          QTY_EXPRESSION_PATTERN.test(value) ? normaliseQty(value) : helpers.error('string.qty')
+        )
+    )
+    .required()
+    .messages({
+      'any.required': 'Each BOQ line needs a quantity',
+      'alternatives.match': 'BOQ quantity must be a number greater than 0, or a pair such as 5/6',
+      'string.qty': 'BOQ quantity must be a number greater than 0, or a pair such as 5/6',
+    }),
   unit: unit.allow(null, ''),
   amount: Joi.number().min(0).allow(null),
   isOptional: Joi.boolean(),

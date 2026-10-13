@@ -8,6 +8,7 @@ import {
 } from '../utils/quotationNumber.js';
 import { amountInWords } from '../utils/amountInWords.js';
 import { QUOTATION_TYPES, DEFAULT_QUOTATION_TYPE } from '../data/quotationTypes.js';
+import { isValidQty } from '../utils/quotationQuantity.js';
 
 const { Schema } = mongoose;
 
@@ -61,10 +62,23 @@ const itemSchema = new Schema(
      * the domestic sheet, which has no such column.
      */
     specification: { type: String, trim: true, maxlength: 400, default: '' },
+    /**
+     * A positive number, or a count the office has not fixed yet written as a
+     * pair — "5/6" — while the panel tally depends on the site survey.
+     *
+     * `Mixed` rather than `Number` because a pair cannot be cast, and the two
+     * must not be conflated: a number stays a number (so nothing that reads a
+     * quantity has to defend itself), and the pair is kept verbatim for the
+     * printed document. The shared validator in utils/quotationQuantity.js
+     * keeps this rule identical to the request validator's.
+     */
     qty: {
-      type: Number,
+      type: Schema.Types.Mixed,
       required: [true, 'BOQ line quantity is required'],
-      min: [0.001, 'BOQ line quantity must be greater than 0'],
+      validate: {
+        validator: isValidQty,
+        message: 'BOQ line quantity must be a positive number, or a pair such as 5/6',
+      },
     },
     unit: {
       type: String,

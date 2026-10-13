@@ -14,6 +14,7 @@ import {
   calculatePanelQty,
 } from '../utils/quotationNumber.js';
 import { amountInWords } from '../utils/amountInWords.js';
+import { normaliseQty } from '../utils/quotationQuantity.js';
 import {
   buildDefaultItems,
   buildDefaultTerms,
@@ -92,7 +93,7 @@ const pickCreatable = (payload = {}) => {
   return out;
 };
 
-/** Normalise BOQ lines: numeric qty, integer order, trimmed description. */
+/** Normalise BOQ lines: quantity, integer order, trimmed description. */
 const normaliseItems = (items) => {
   if (!Array.isArray(items)) return [];
   return items.map((raw, index) => ({
@@ -101,7 +102,12 @@ const normaliseItems = (items) => {
     // Partner/project sheet columns; blank on the domestic sheet.
     specification: String(raw?.specification ?? '').trim(),
     section: String(raw?.section ?? '').trim(),
-    qty: Number(raw?.qty),
+    /*
+     * A number stays a number; a count written as a pair ("6/7") stays text.
+     * Number() here would turn the pair into NaN and the model would then refuse
+     * a quantity the request validator had just accepted.
+     */
+    qty: normaliseQty(raw?.qty),
     unit: raw?.unit ? String(raw.unit).trim().toLowerCase() : null,
     amount: raw?.amount === undefined || raw?.amount === null || raw?.amount === '' ? null : Number(raw.amount),
     isOptional: Boolean(raw?.isOptional),
@@ -366,10 +372,42 @@ export const quotationService = {
       schemes: (profile.schemes || [])
         .filter((scheme) => scheme.isActive !== false)
         .map((scheme) => ({ code: scheme.code, label: scheme.label || '' })),
+      /*
+       * The structure wording travels with the list so the form can fill the
+       * structure line of the standard BOQ as the type is switched, without
+       * another round trip.
+       */
       structures: (profile.structures || []).map((structure) => ({
         value: structure.value,
         label: structure.label || structure.value,
+        defaultLine: structure.defaultLine || '',
+        overviewPhrase: structure.overviewPhrase || '',
       })),
+      /**
+       * The company's standard BOQ template, verbatim.
+       *
+       * The domestic sheet used to start empty and have these eight lines seeded
+       * by the server on save, which meant the operator could not adjust a line
+       * before issuing — the panel line in particular reads
+       * "Solar Modules Bifacial TOPcon Panel(610 wp)", and some consumers take
+       * non-DCR or a different module, and the panel count is often not settled
+       * until the site survey. The form now starts from these same lines so any
+       * of them can be edited first. `{{token}}` placeholders are filled in by
+       * the client as the system details are typed; the server-side seed in
+       * utils/quotationDefaults.js is unchanged and still applies when a
+       * quotation is saved with no lines at all.
+       */
+      boqTemplate: (profile.defaultItems || [])
+        .slice()
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map((line) => ({
+          description: line.description || '',
+          brandModel: line.brandModel || '',
+          qtyRule: line.qtyRule === 'panel' ? 'panel' : Number(line.qtyRule) || 1,
+          unit: line.unit ?? null,
+          isStructureLine: Boolean(line.isStructureLine),
+          order: line.order ?? 0,
+        })),
       terms: buildDefaultTerms(profile),
       paymentTerms: buildDefaultPaymentTerms(profile),
     };
