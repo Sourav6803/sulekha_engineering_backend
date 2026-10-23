@@ -201,6 +201,53 @@ export const notificationService = {
   },
 
   /**
+   * Tell one office user that a visitor has asked for a free site survey.
+   *
+   * Stored as `system` rather than a new type on purpose: the bell and the
+   * notifications page already know how to render that one, and `metadata.kind`
+   * keeps these distinguishable when filtering later. Addressed per recipient for
+   * the same reason the new-application notice is — a public enquiry is office
+   * work, and it should not appear in every agent's own bell.
+   *
+   * @param {Object} args
+   * @param {Object} args.lead - The stored lead.
+   * @param {String} args.recipient - The office user's id.
+   * @param {Object} args.notice - Copy from `data/newLeadNotice.js`.
+   * @returns {Promise<Object>} The stored notification.
+   */
+  async createNewLeadNotification({ lead, recipient, notice }) {
+    const created = await Notification.create({
+      type: 'system',
+      source: 'internal',
+      recipient,
+      title: notice.title,
+      message: notice.message,
+      // A leading slash is an in-app destination the client routes to.
+      link: '/leads',
+      category: notice.category,
+      priority: notice.priority,
+      isExternal: false,
+      metadata: {
+        kind: 'lead',
+        leadId: String(lead._id),
+        ...notice.fields,
+      },
+    });
+
+    // The list endpoints cache for an hour, so without this the office bell would
+    // not ring until the cache aged out. Best-effort: no-op when Redis is down.
+    await redisDel('notifications:list:*');
+    await redisDel('notifications:unified:*');
+
+    logger.info(
+      { leadId: String(lead._id), phone: lead.phone, recipient: String(recipient) },
+      'New-lead notification created'
+    );
+
+    return created;
+  },
+
+  /**
    * Get all unread notifications
    * @param {Object} options - Query options
    * @returns {Promise<Array>} Unread notifications

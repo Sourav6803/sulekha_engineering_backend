@@ -51,19 +51,71 @@ export const uploadToCloudinaryDetailed = async (file, options = {}) => {
  * Best-effort delete of a previously uploaded asset. Never throws: a failure
  * here must not roll back a database change.
  */
-export const deleteFromCloudinary = async (publicId) => {
+export const deleteFromCloudinary = async (publicId, resourceType) => {
   if (!publicId) return false;
-  try {
-    await cloudinary.uploader.destroy(publicId, { resource_type: 'image', invalidate: true });
-    return true;
-  } catch {
+
+  /*
+   * Cloudinary needs the resource type to destroy an asset, and it will not
+   * guess: a video destroyed as an image is reported as not found. Callers that
+   * know the type pass it; the rest keep the original image → raw fallback.
+   */
+  const types = resourceType ? [resourceType, 'image', 'raw', 'video'] : ['image', 'raw', 'video'];
+
+  for (const type of [...new Set(types)]) {
     try {
-      await cloudinary.uploader.destroy(publicId, { resource_type: 'raw', invalidate: true });
+      await cloudinary.uploader.destroy(publicId, { resource_type: type, invalidate: true });
       return true;
     } catch {
-      return false;
+      // try the next type
     }
   }
+  return false;
 };
 
-export default { uploadToCloudinary, uploadToCloudinaryDetailed, deleteFromCloudinary };
+/**
+ * Upload bytes that are already in memory.
+ *
+ * Used where the file must not touch the container's disk — a showcase video, an
+ * image read for its dimensions — so there is no temporary file to leak if the
+ * request dies halfway.
+ */
+export const uploadBufferToCloudinary = (buffer, options = {}) =>
+  new Promise((resolve, reject) => {
+    if (!config.CLOUDINARY_CLOUD_NAME || !config.CLOUDINARY_API_KEY || !config.CLOUDINARY_API_SECRET) {
+      reject(new Error('Cloudinary credentials are not configured'));
+      return;
+    }
+
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: options.folder || config.CLOUDINARY_FOLDER,
+        public_id: options.public_id,
+        resource_type: options.resourceType || 'auto',
+      },
+      (error, result) => {
+        if (error || !result) {
+          reject(error || new Error('Cloudinary upload failed'));
+          return;
+        }
+        resolve({
+          url: result.secure_url,
+          publicId: result.public_id,
+          bytes: result.bytes,
+          format: result.format,
+          resourceType: result.resource_type,
+          width: result.width,
+          height: result.height,
+          durationSeconds: result.duration,
+        });
+      }
+    );
+
+    stream.end(buffer);
+  });
+
+export default {
+  uploadToCloudinary,
+  uploadToCloudinaryDetailed,
+  uploadBufferToCloudinary,
+  deleteFromCloudinary,
+};

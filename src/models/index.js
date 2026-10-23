@@ -14,6 +14,9 @@ import Quotation from './Quotation.js';
 import CompanyProfile from './CompanyProfile.js';
 import Agreement from './Agreement.js';
 import Application from './Application.js';
+import ProjectShowcase from './ProjectShowcase.js';
+import SiteBanner from './SiteBanner.js';
+import Lead from './Lead.js';
 
 export {
   Supplier,
@@ -29,7 +32,10 @@ export {
   Quotation,
   CompanyProfile,
   Agreement,
-  Application
+  Application,
+  ProjectShowcase,
+  SiteBanner,
+  Lead
 };
 
 export default {
@@ -46,5 +52,8 @@ export default {
   Quotation,
   CompanyProfile,
   Agreement,
-  Application
+  Application,
+  ProjectShowcase,
+  SiteBanner,
+  Lead
 };

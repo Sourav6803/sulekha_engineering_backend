@@ -1070,6 +1070,134 @@ export const sendNewApplicationEmail = async ({ to, company, ...rest } = {}) => 
   });
 };
 
+/**
+ * The mail the office gets when a visitor submits the public enquiry form.
+ *
+ * Same contract as the application notice: the wording comes from
+ * `data/newLeadNotice.js` so the email and the in-app bell say the same thing,
+ * and `build…` is split from `send…` so it can be asserted without SMTP.
+ *
+ * The phone number is the point of this mail, so it is set large in the summary
+ * table and repeated in the text part — on a phone the plain-text fallback is
+ * often what actually gets read.
+ */
+export const buildNewLeadEmail = ({ notice, recipientName, leadUrl, company } = {}) => {
+  const firstName = String(recipientName || '').trim().split(/\s+/)[0];
+  const fields = notice?.fields ?? {};
+
+  const bodyHtml = `
+    <p style="margin:0 0 15px;font-size:14px;line-height:1.85;">প্রিয় ${escapeHtml(firstName || 'স্যার')},</p>
+
+    <p style="margin:0 0 16px;font-size:14px;line-height:1.85;">${notice.emailIntro}</p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF6EC;border:1px solid #E8DCC8;border-radius:13px;">
+      <tr>
+        <td style="padding:10px 22px 14px;">
+          <div style="font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:#9A8B74;padding:8px 0 2px;">অনুরোধের বিবরণ</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${detailRow('নাম', fields.name || '—')}
+            ${detailRow('ফোন', fields.phone || '—')}
+            ${fields.email ? detailRow('ইমেল', fields.email) : ''}
+            ${detailRow('জেলা', fields.district || '—')}
+            ${fields.systemSizeKW ? detailRow('সিস্টেম সাইজ', fields.systemSizeKW) : ''}
+            ${fields.monthlyBill ? detailRow('মাসিক বিল', fields.monthlyBill) : ''}
+            ${detailRow('উৎস', fields.source || '—')}
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    ${
+      fields.message
+        ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;background:#F7FAF8;border:1px solid #DDEAE2;border-radius:13px;">
+             <tr><td style="padding:14px 20px;font-size:13px;line-height:1.85;color:#3C4A42;">
+               <div style="font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:#7E8F86;padding-bottom:6px;">গ্রাহকের বার্তা</div>
+               ${escapeHtml(fields.message)}
+             </td></tr>
+           </table>`
+        : ''
+    }
+
+    ${ctaButton(leadUrl, 'লিড তালিকা খুলুন')}
+
+    ${stepsBlock(notice.steps)}
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 0;background:#FFF7EA;border-left:4px solid #EA8A3B;border-radius:0 12px 12px 0;">
+      <tr>
+        <td style="padding:16px 20px;">
+          <div style="font-size:13px;line-height:1.85;color:#4A3A28;">
+            সার্ভের তারিখ ঠিক হয়ে গেলে আর দেরি করবেন না &mdash; প্রথম কলটাই সাধারণত কাজটা জিতে নেয়।
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:22px 0 8px;font-size:13px;line-height:1.85;color:#7A6A56;">
+      লিডটি না খুলতে পারলে অফিসে জানান &mdash; ${escapeHtml(company?.phone || '')}
+    </p>
+    <p style="margin:0;font-size:12px;line-height:1.85;color:#9A8B78;">
+      বোতাম কাজ না করলে এই লিঙ্কটি খুলুন:<br />
+      <a href="${escapeHtml(leadUrl)}" style="color:#C96F22;word-break:break-all;">${escapeHtml(leadUrl)}</a>
+    </p>
+  `;
+
+  const text = [
+    `প্রিয় ${firstName || 'স্যার'},`,
+    '',
+    notice.emailIntroText,
+    '',
+    `নাম: ${fields.name || '-'}`,
+    `ফোন: ${fields.phone || '-'}`,
+    fields.email ? `ইমেল: ${fields.email}` : '',
+    `জেলা: ${fields.district || '-'}`,
+    fields.systemSizeKW ? `সিস্টেম সাইজ: ${fields.systemSizeKW}` : '',
+    fields.monthlyBill ? `মাসিক বিল: ${fields.monthlyBill}` : '',
+    `উৎস: ${fields.source || '-'}`,
+    fields.message ? `বার্তা: ${fields.message}` : '',
+    '',
+    `লিড তালিকা: ${leadUrl}`,
+    '',
+    'পরের কাজ:',
+    ...notice.stepsText.map((step, index) => `  ${index + 1}. ${step}`),
+    '',
+    `-- ${company?.name || ''}`,
+    (company?.addressLines || []).join(', '),
+    company?.phone ? `ফোন: ${company.phone} | ${company.email}` : '',
+    '',
+    'এটি একটি স্বয়ংক্রিয় বার্তা; উত্তর দেওয়ার প্রয়োজন নেই।',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return {
+    subject: notice.emailSubject,
+    html: layout({
+      company,
+      heading: notice.emailHeading,
+      bodyHtml,
+      preheader: `${fields.name || ''} (${fields.district || ''}) — ${fields.phone || ''} নতুন সার্ভে চেয়েছেন।`,
+    }),
+    text,
+  };
+};
+
+/**
+ * Send the new-enquiry mail to one office user. Best-effort like the rest: the
+ * lead is already stored, and a bounced mailbox must not fail the visitor's form.
+ */
+export const sendNewLeadEmail = async ({ to, company, ...rest } = {}) => {
+  const resolvedCompany = company ?? (await getCompany());
+  const { subject, html, text } = buildNewLeadEmail({ ...rest, company: resolvedCompany });
+
+  return sendMail({
+    to,
+    subject,
+    html,
+    text,
+    attachments: logoAttachment(),
+  });
+};
+
 export default {
   sendMail,
   sendAgentWelcomeEmail,
@@ -1078,6 +1206,8 @@ export default {
   sendSignedDocumentFiledEmail,
   buildNewApplicationEmail,
   sendNewApplicationEmail,
+  buildNewLeadEmail,
+  sendNewLeadEmail,
   isEmailEnabled,
   isEmailConfigured,
   verifyEmailTransport,

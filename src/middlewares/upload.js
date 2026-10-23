@@ -212,4 +212,84 @@ export const uploadSingleToMemory = (fieldName) => {
   };
 };
 
+// ============================================
+// PUBLIC SITE MEDIA
+// ============================================
+
+/**
+ * Photographs and short films for a project story, plus banner artwork.
+ *
+ * Kept apart from the shared `upload` above for two reasons: that filter is
+ * deliberately narrow (a purchase invoice has no business being a video), and a
+ * gallery clip needs a far larger limit than a document. Memory storage is used
+ * on purpose — the bytes go straight to Cloudinary, so there is no temporary file
+ * left behind on the container if the request dies halfway.
+ */
+const SHOWCASE_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
+const BANNER_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+const SHOWCASE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const SHOWCASE_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+
+const buildMemoryUploader = ({ allowed, maxBytes, label }) =>
+  multer({
+    storage: multer.memoryStorage(),
+    fileFilter: (req, file, cb) => {
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+        return;
+      }
+      cb(
+        new ApiError(
+          400,
+          `Invalid ${label} type. Allowed: ${allowed.join(', ')}`,
+          'INVALID_FILE_TYPE'
+        ),
+        false
+      );
+    },
+    limits: { fileSize: maxBytes, files: 1 },
+  });
+
+const showcaseUploader = buildMemoryUploader({
+  allowed: [...SHOWCASE_IMAGE_TYPES, ...SHOWCASE_VIDEO_TYPES],
+  maxBytes: SHOWCASE_MAX_BYTES,
+  label: 'media',
+});
+
+const bannerUploader = buildMemoryUploader({
+  allowed: SHOWCASE_IMAGE_TYPES,
+  maxBytes: BANNER_MAX_BYTES,
+  label: 'image',
+});
+
+/** Wrap a single-file uploader with the same error mapping the rest of the app uses. */
+const singleFile = (instance, field, maxBytes, label) => (req, res, next) => {
+  instance.single(field)(req, res, (err) => {
+    if (!err) return next();
+
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return next(
+          ApiError.badRequest(`${label} too large. Max size: ${Math.round(maxBytes / 1024 / 1024)}MB`)
+        );
+      }
+      if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+        return next(ApiError.badRequest(`Unexpected file field: ${err.field}`));
+      }
+      return next(ApiError.badRequest(`Upload error: ${err.message}`));
+    }
+
+    return next(err);
+  });
+};
+
+/** One image or one short video, as `multipart/form-data` under `file`. */
+export const uploadShowcaseMedia = (fieldName = 'file') =>
+  singleFile(showcaseUploader, fieldName, SHOWCASE_MAX_BYTES, 'File');
+
+/** One image, as `multipart/form-data` under `image`. */
+export const uploadBannerImage = (fieldName = 'image') =>
+  singleFile(bannerUploader, fieldName, BANNER_MAX_BYTES, 'Image');
+
 export default upload;

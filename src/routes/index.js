@@ -12,6 +12,10 @@ import quotationRoutes from './quotation.routes.js';
 import agreementRoutes from './agreement.routes.js';
 import applicationRoutes from './application.routes.js';
 import agentRoutes from './agent.routes.js';
+import publicRoutes from './public.routes.js';
+import showcaseRoutes from './showcase.routes.js';
+import bannerRoutes from './banner.routes.js';
+import leadRoutes from './lead.routes.js';
 
 const router = Router();
 
@@ -33,5 +37,19 @@ router.use('/agreements', agreementRoutes);
 router.use('/applications', applicationRoutes);
 // Agent account management — admin only (see agent.routes.js).
 router.use('/agents', agentRoutes);
+
+// ---------------------------------------------------------------------------
+// Public marketing site.
+//
+// These reads are anonymous — the landing page is the first thing a visitor
+// sees, before any account exists. Management lives under `/admin` inside each
+// router and is authenticated and role-guarded there, so nothing is public by
+// accident: /showcase and /banners expose published content only, and /leads
+// exposes a single anonymous POST for the enquiry form.
+// ---------------------------------------------------------------------------
+router.use('/public', publicRoutes);
+router.use('/showcase', showcaseRoutes);
+router.use('/banners', bannerRoutes);
+router.use('/leads', leadRoutes);
 
 export default router;
