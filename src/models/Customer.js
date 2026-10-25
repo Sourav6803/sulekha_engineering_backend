@@ -111,7 +111,23 @@ const CustomerSchema = new Schema({
     type: Number,
     required: [true, 'System size in kW is required'],
     min: [0.1, 'System size must be at least 0.1 kW'],
-    max: [100, 'System size cannot exceed 100 kW']
+    /* A PM Surya Ghar residential rooftop is capped at 10 kW: the subsidy table
+       stops there and the vendor does not quote above it. */
+    max: [10, 'System size cannot exceed 10 kW']
+  },
+
+  /*
+   * The category the subsidy is calculated on. SC/ST households get the higher
+   * rate, and the application cannot be filed without the caste certificate on
+   * file — the documents checklist reads this field.
+   */
+  category: {
+    type: String,
+    enum: {
+      values: ['general', 'obc', 'sc', 'st', null],
+      message: 'Category must be one of: general, obc, sc, st'
+    },
+    default: null
   },
 
   roofType: {
@@ -288,7 +304,9 @@ const CustomerSchema = new Schema({
         // filed against the customer once it arrives.
         'eToken',
         'acknowledgement',
-        'netMetering'
+        'netMetering',
+        // Required when the household is SC/ST and claims the higher subsidy.
+        'casteCertificate'
       ]
     },
     url: {

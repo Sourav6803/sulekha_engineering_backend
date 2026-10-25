@@ -1,4 +1,4 @@
-// src/validations/customer.validation.js
+﻿// src/validations/customer.validation.js
 import Joi from 'joi';
 
 const roofType = Joi.string().valid('rcc_rooftop', 'tin_shed', 'ground_mount');
@@ -9,14 +9,14 @@ const customerStatus = Joi.string().valid('active', 'inactive', 'blocked', 'pend
  *
  * Blank rows are dropped rather than rejected: the client sends what the installer
  * typed into a row of inputs, and a half-filled row is a normal thing to submit,
- * not a bad request. Length is capped because the list follows the system size —
+ * not a bad request. Length is capped because the list follows the system size â€”
  * the biggest roof this app handles is a few dozen panels, never a hundred.
  */
 const panelSerialNumbers = Joi.array()
   /*
    * `.allow('')` is load-bearing. Without it `Joi.string()` refuses an empty item,
-   * so the blank row an installer leaves behind — the normal state of a partly
-   * filled list — came back as a 400 instead of being dropped by the filter below.
+   * so the blank row an installer leaves behind â€” the normal state of a partly
+   * filled list â€” came back as a 400 instead of being dropped by the filter below.
    * Trim runs first, so a row of spaces is emptied and then filtered too.
    */
   .items(Joi.string().trim().max(60).allow(''))
@@ -27,8 +27,8 @@ const panelSerialNumbers = Joi.array()
  * The site visit, as the agent recorded it at the consumer's house.
  *
  * These blocks used to belong to the application wizard. They are part of the
- * customer now — the visit produces a customer, and the office files an
- * application from that record — so every one of them is optional here: an agent
+ * customer now â€” the visit produces a customer, and the office files an
+ * application from that record â€” so every one of them is optional here: an agent
  * may save a half-taken record and finish it later.
  */
 const siteType = Joi.string()
@@ -136,15 +136,18 @@ export const createCustomerValidation = Joi.object({
   systemSizeKW: Joi.number()
     .required()
     .min(0.1)
-    .max(100)
+    /* PM Surya Ghar residential rooftop: the subsidy table stops at 10 kW. */
+    .max(10)
     .messages({
       'number.min': 'System size must be at least 0.1 kW',
-      'number.max': 'System size cannot exceed 100 kW',
+      'number.max': 'System size cannot exceed 10 kW',
       'any.required': 'System size is required',
     }),
   roofType: roofType.required().messages({
     'any.required': 'Roof type is required',
   }),
+  /* Optional: an agent may not know the category at the first visit. */
+  category: Joi.string().valid('general', 'obc', 'sc', 'st').allow(null, ''),
   roofArea: Joi.number().min(0).max(10000),
   gstNumber: Joi.string()
     .pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/)
@@ -193,8 +196,9 @@ export const updateCustomerValidation = Joi.object({
   block: Joi.string().max(100),
   panchayat: Joi.string().max(100),
   landmark: Joi.string().max(200),
-  systemSizeKW: Joi.number().min(0.1).max(100),
+  systemSizeKW: Joi.number().min(0.1).max(10),
   roofType: roofType,
+  category: Joi.string().valid('general', 'obc', 'sc', 'st').allow(null, ''),
   roofArea: Joi.number().min(0).max(10000),
   gstNumber: Joi.string()
     .pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/),
@@ -219,7 +223,7 @@ export const updateCustomerValidation = Joi.object({
   panelSerialNumbers,
 });
 
-/** POST /customers/:id/verify — the office's clearance of the intake. */
+/** POST /customers/:id/verify â€” the office's clearance of the intake. */
 export const verifyCustomerValidation = Joi.object({
   status: Joi.string().valid('verified', 'rejected', 'pending').default('verified'),
   note: Joi.string().max(1000).allow('', null),
@@ -284,7 +288,8 @@ export const uploadDocumentBodyValidation = Joi.object({
     'panelSerialNumber',
     'eToken',
     'acknowledgement',
-    'netMetering'
+    'netMetering',
+    'casteCertificate'
   ).required()
 });
 

@@ -1,4 +1,4 @@
-// src/controllers/customer.controller.js
+﻿// src/controllers/customer.controller.js
 import { Customer, Installation } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
@@ -17,7 +17,7 @@ const isOffice = (user) => OFFICE_ROLES.includes(user?.role);
  * Guard for a customer record.
  *
  * A customer now carries Aadhaar, PAN and bank papers, and field agents create
- * them — so an agent may only ever read, edit or attach documents to the ones
+ * them â€” so an agent may only ever read, edit or attach documents to the ones
  * they collected. An office user is not scoped.
  *
  * A customer outside the caller's scope is reported as "not found" rather than
@@ -51,7 +51,7 @@ export const listCustomers = async (req, res) => {
     sortOrder = 'asc',
   } = req.query;
 
-  // Build filter — a field agent only ever lists their own customers.
+  // Build filter â€” a field agent only ever lists their own customers.
   const filter = { isActive: true, ...scopeFilter(req.user) };
   if (status) filter.status = status;
   if (city) filter.city = { $regex: city, $options: 'i' };
@@ -163,7 +163,7 @@ export const createCustomer = async (req, res) => {
   /*
    * The agent who collected this customer owns the record; the office may hand
    * it to a named agent, otherwise it stays with whoever created it. `ownerAgent`
-   * is taken from the body only for the office, never for an agent — an agent
+   * is taken from the body only for the office, never for an agent â€” an agent
    * could otherwise file customers against a colleague.
    */
   const ownerAgent = isOffice(req.user)
@@ -174,7 +174,7 @@ export const createCustomer = async (req, res) => {
    * A customer collected in the field starts unverified.
    *
    * The schema default is `active`, which quietly made every new record
-   * application-ready the moment an agent typed it in — the verification step
+   * application-ready the moment an agent typed it in â€” the verification step
    * existed but nothing ever landed in it. The office can still create a
    * customer it has already checked, so this only overrides the agent path.
    */
@@ -252,7 +252,7 @@ export const updateCustomer = async (req, res) => {
 };
 
 /**
- * Verify a customer — the office's check of the papers collected in the field.
+ * Verify a customer â€” the office's check of the papers collected in the field.
  *
  * This is the gate the application depends on: POST /applications refuses any
  * customer whose verification is not `verified`. Kept apart from updateCustomer
@@ -435,7 +435,8 @@ export const uploadCustomerDocument = async (req, res) => {
     'panelSerialNumber',
     'eToken',
     'acknowledgement',
-    'netMetering'
+    'netMetering',
+    'casteCertificate'
   ];
 
   if (!validTypes.includes(type)) {
