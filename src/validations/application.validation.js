@@ -129,6 +129,16 @@ export const creditCheckPreviewSchema = creditCheckSchema.keys({
 
 export const createApplicationSchema = Joi.object({
   /*
+   * The customer this application is filed for. Must be declared here even though
+   * the service reads it straight off the body: `validate()` runs with
+   * stripUnknown, so a field the schema does not name never reaches the service.
+   */
+  customer: Joi.string()
+    .pattern(/^[0-9a-fA-F]{24}$/)
+    .messages({
+      'string.pattern.base': 'That customer reference is not valid.',
+    }),
+  /*
    * The consumer's identity is copied from the customer record, so neither of
    * these is required here — the server overwrites both from `customer`. They
    * stay in the schema for the update path and for an older client.
