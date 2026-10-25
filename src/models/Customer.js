@@ -336,6 +336,19 @@ const CustomerSchema = new Schema({
   },
 
   /*
+   * The bank account the subsidy is routed to, read off the passbook at the
+   * house. Typed here rather than on the document record so the office can see
+   * it without opening a photo; the passbook scan sits in `documents`.
+   */
+  bank: {
+    accountHolderName: { type: String, trim: true, maxlength: 150 },
+    accountNumber: { type: String, trim: true, maxlength: 30 },
+    ifsc: { type: String, trim: true, uppercase: true, maxlength: 11 },
+    bankName: { type: String, trim: true, maxlength: 120 },
+    branch: { type: String, trim: true, maxlength: 120 },
+  },
+
+  /*
    * The name read off each paper at the house. The verdict is computed later —
    * case, punctuation and honorifics are folded, a real mismatch is not.
    */

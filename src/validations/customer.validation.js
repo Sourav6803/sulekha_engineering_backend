@@ -68,6 +68,15 @@ const electricBillSchema = Joi.object({
   verified: Joi.boolean(),
 });
 
+/** The account the subsidy is routed to, as printed on the passbook. */
+const bankSchema = Joi.object({
+  accountHolderName: Joi.string().max(150).allow('', null),
+  accountNumber: Joi.string().max(30).allow('', null),
+  ifsc: Joi.string().max(11).allow('', null),
+  bankName: Joi.string().max(120).allow('', null),
+  branch: Joi.string().max(120).allow('', null),
+});
+
 const nameMatchSchema = Joi.object({
   consumerName: Joi.string().max(100).allow('', null),
   aadhaarName: Joi.string().max(100).allow('', null),
@@ -164,6 +173,7 @@ export const createCustomerValidation = Joi.object({
   creditCheck: creditCheckSchema,
   electricBill: electricBillSchema,
   nameMatch: nameMatchSchema,
+  bank: bankSchema,
   notes: Joi.string().max(1000),
   referredBy: Joi.string().max(100),
   panelSerialNumbers,
@@ -203,6 +213,7 @@ export const updateCustomerValidation = Joi.object({
   creditCheck: creditCheckSchema,
   electricBill: electricBillSchema,
   nameMatch: nameMatchSchema,
+  bank: bankSchema,
   notes: Joi.string().max(1000),
   referredBy: Joi.string().max(100),
   panelSerialNumbers,
