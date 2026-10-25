@@ -145,6 +145,20 @@ const CustomerSchema = new Schema({
     description: 'Optional - only for business customers'
   },
 
+  /*
+   * The KYC identifiers live on the customer now.
+   *
+   * They used to be typed into the application form, which meant the same
+   * Aadhaar could be stored twice, differently, for the same person. The
+   * application snapshots these at creation; this record stays the truth.
+   */
+  aadhaarNumber: {
+    type: String,
+    trim: true,
+    match: [/^[0-9]{12}$/, 'Aadhaar number must be 12 digits'],
+    description: 'Collected from the Aadhaar card; required before an application can be filed'
+  },
+
   panNumber: {
     type: String,
     trim: true,
@@ -263,6 +277,21 @@ const CustomerSchema = new Schema({
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: 'User'
+  },
+
+  /*
+   * The field agent who brought this customer in.
+   *
+   * Agents can now create customers, and a customer record carries Aadhaar and
+   * bank papers — so an agent may only ever see the ones they collected. The
+   * office (admin, manager) is not scoped. Set on create, never reassigned by
+   * an update from below, and copied onto the application so the agent keeps
+   * visibility of what happened to their customer.
+   */
+  ownerAgent: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    index: true
   },
 
   updatedBy: {
@@ -496,14 +525,15 @@ CustomerSchema.pre('save', function(next) {
   // next();
 });
 
-// Update timestamp on status change
-CustomerSchema.pre('findOneAndUpdate', function(next) {
-  const update = this.getUpdate();
-  if (update.status) {
-    update.updatedAt = new Date();
-  }
-  next();
-});
+/*
+ * `updatedAt` on an update is Mongoose's job — `timestamps: true` on the schema
+ * already stamps every findOneAndUpdate.
+ *
+ * The hand-rolled hook that used to sit here called `next()`, which current
+ * Mongoose does not pass to query middleware, so every findOneAndUpdate on a
+ * customer threw "next is not a function". Removing it fixed marking a customer
+ * verified, which is now the step that gates filing an application.
+ */
 
 // ==================== EXPORT ====================
 

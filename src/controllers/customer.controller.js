@@ -8,6 +8,33 @@ import { uploadToCloudinary } from '../services/storage.service.js';
 
 const CACHE_TTL = 3600; // 1 hour
 
+/** Roles that see every customer. Everyone else sees only their own. */
+const OFFICE_ROLES = ['admin', 'manager'];
+
+const isOffice = (user) => OFFICE_ROLES.includes(user?.role);
+
+/**
+ * Guard for a customer record.
+ *
+ * A customer now carries Aadhaar, PAN and bank papers, and field agents create
+ * them — so an agent may only ever read, edit or attach documents to the ones
+ * they collected. An office user is not scoped.
+ *
+ * A customer outside the caller's scope is reported as "not found" rather than
+ * "forbidden": a 403 would confirm that a record exists, which is exactly what
+ * someone guessing ids should not learn.
+ */
+const assertCanReadCustomer = (customer, user) => {
+  if (!customer) throw ApiError.notFound('Customer');
+  if (isOffice(user)) return;
+  if (String(customer.ownerAgent || '') !== String(user._id)) {
+    throw ApiError.notFound('Customer');
+  }
+};
+
+/** Extra filter clause for a scoped caller. Empty for the office. */
+const scopeFilter = (user) => (isOffice(user) ? {} : { ownerAgent: user._id });
+
 /**
  * List all customers with pagination and filters
  */
@@ -24,8 +51,8 @@ export const listCustomers = async (req, res) => {
     sortOrder = 'asc',
   } = req.query;
 
-  // Build filter
-  const filter = { isActive: true };
+  // Build filter — a field agent only ever lists their own customers.
+  const filter = { isActive: true, ...scopeFilter(req.user) };
   if (status) filter.status = status;
   if (city) filter.city = { $regex: city, $options: 'i' };
   if (state) filter.state = { $regex: state, $options: 'i' };
@@ -84,7 +111,10 @@ export const listCustomers = async (req, res) => {
 export const searchCustomers = async (req, res) => {
   const { q, limit = 20 } = req.query;
 
-  const customers = await Customer.search(q).limit(parseInt(limit)).lean();
+  const query = Customer.search(q).limit(parseInt(limit));
+  if (!isOffice(req.user)) query.where('ownerAgent').equals(req.user._id);
+
+  const customers = await query.lean();
 
   return ApiResponse.send(res, customers, 'Search results fetched successfully');
 };
@@ -99,14 +129,15 @@ export const getCustomer = async (req, res) => {
   const cached = await redisGet(cacheKey);
 
   if (cached) {
+    // The scope check has to run on the cached copy too, otherwise a hit would
+    // hand an agent a customer they are not allowed to see.
+    assertCanReadCustomer(cached, req.user);
     return ApiResponse.send(res, cached, 'Customer fetched from cache');
   }
 
   const customer = await Customer.findById(id).lean();
 
-  if (!customer) {
-    throw ApiError.notFound('Customer');
-  }
+  assertCanReadCustomer(customer, req.user);
 
   // Cache result
   await redisSet(cacheKey, customer, CACHE_TTL);
@@ -129,9 +160,32 @@ export const createCustomer = async (req, res) => {
   // Generate customer ID
   const customerId = await Customer.generateCustomerId();
 
-  // Create customer
+  /*
+   * The agent who collected this customer owns the record; the office may hand
+   * it to a named agent, otherwise it stays with whoever created it. `ownerAgent`
+   * is taken from the body only for the office, never for an agent — an agent
+   * could otherwise file customers against a colleague.
+   */
+  const ownerAgent = isOffice(req.user)
+    ? customerData.ownerAgent || req.userId
+    : req.userId;
+
+  /*
+   * A customer collected in the field starts unverified.
+   *
+   * The schema default is `active`, which quietly made every new record
+   * application-ready the moment an agent typed it in — the verification step
+   * existed but nothing ever landed in it. The office can still create a
+   * customer it has already checked, so this only overrides the agent path.
+   */
+  const status = isOffice(req.user)
+    ? customerData.status || 'active'
+    : 'pending_verification';
+
   const customer = await Customer.create({
     ...customerData,
+    status,
+    ownerAgent,
     customerId,
     createdBy: req.userId,
     updatedBy: req.userId,
@@ -152,11 +206,12 @@ export const updateCustomer = async (req, res) => {
   const { id } = req.params;
   const updateData = req.body;
 
-  // Check if customer exists
+  // Check if customer exists, and that the caller is allowed to touch it
   const customer = await Customer.findById(id);
-  if (!customer) {
-    throw ApiError.notFound('Customer');
-  }
+  assertCanReadCustomer(customer, req.user);
+
+  // Ownership is the office's to reassign, not the agent's to give away.
+  if (!isOffice(req.user)) delete updateData.ownerAgent;
 
   // Check phone uniqueness if updating
   if (updateData.phone && updateData.phone !== customer.phone) {
@@ -225,11 +280,9 @@ export const getCustomerInstallations = async (req, res) => {
   const { id } = req.params;
   const { page = 1, limit = 20 } = req.query;
 
-  // Check if customer exists
+  // Check if customer exists, and that the caller may see it
   const customer = await Customer.findById(id);
-  if (!customer) {
-    throw ApiError.notFound('Customer');
-  }
+  assertCanReadCustomer(customer, req.user);
 
   // Get installations
   const [installations, total] = await Promise.all([
@@ -265,9 +318,7 @@ export const getCustomerHistory = async (req, res) => {
   const { id } = req.params;
 
   const customer = await Customer.findById(id);
-  if (!customer) {
-    throw ApiError.notFound('Customer');
-  }
+  assertCanReadCustomer(customer, req.user);
 
   // Get all installations
   const installations = await Installation.find({ customer: id, isActive: true })
@@ -335,9 +386,7 @@ export const uploadCustomerDocument = async (req, res) => {
   }
 
   const customer = await Customer.findById(id);
-  if (!customer) {
-    throw ApiError.notFound('Customer');
-  }
+  assertCanReadCustomer(customer, req.user);
 
   const uploadedDocuments = [];
 
@@ -380,9 +429,7 @@ export const deleteCustomerDocument = async (req, res) => {
   const { id, documentId } = req.params;
 
   const customer = await Customer.findById(id);
-  if (!customer) {
-    throw ApiError.notFound('Customer');
-  }
+  assertCanReadCustomer(customer, req.user);
 
   const documentIndex = customer.documents.findIndex(doc => doc._id.toString() === documentId);
   if (documentIndex === -1) {

@@ -1,4 +1,4 @@
-// src/routes/application.routes.js
+﻿// src/routes/application.routes.js
 import { Router } from 'express';
 import { authenticate, authorize } from '../middlewares/auth.js';
 import { validate, validateParams, validateQuery } from '../middlewares/validate.js';
@@ -34,21 +34,25 @@ router.use(authenticate);
 const READ_ROLES = ['admin', 'manager', 'agent'];
 
 /**
- * Writing consumer data belongs to the field agent and to nobody else.
+ * Who may fill in, correct and submit an application once it exists.
  *
- * The office supervises the pipeline — it reads the record, judges each
- * document against the clarity metrics, moves the application along the
- * workflow and files the signed copies — but it does not type or correct what
- * the consumer told the agent at their house. Splitting the two halves across
- * roles is what keeps an application a record of the visit rather than
- * something a desk can quietly rewrite afterwards.
+ * This used to be the field agent alone, because the agent was the one typing
+ * the consumer's details. That changed: the consumer is now a Customer record,
+ * collected by an agent or by the office, and the application is filed *from*
+ * that verified customer. The office therefore has to be able to complete the
+ * wizard steps that follow — scheme, documents, bill, submission — so the write
+ * roles are the whole pipeline, not one half of it.
+ *
+ * Creating is narrower: see the POST '/' route, which stays with the office
+ * because it is the office that decides a verified customer becomes an
+ * application.
  */
-const FIELD_AGENT_ROLES = ['agent'];
+const APPLICATION_WRITE_ROLES = ['admin', 'manager', 'agent'];
 
 /**
  * The office's half: verdicts, workflow status and the signed copies.
  *
- * Exported so the new-application notice can be tested against it — that notice
+ * Exported so the new-application notice can be tested against it â€” that notice
  * is addressed to `OFFICE_ROLES`, and a test asserts the two lists agree. A
  * reworded role group here must not silently send this work to nobody.
  */
@@ -61,7 +65,7 @@ export const REVIEW_ROLES = ['admin', 'manager'];
  */
 router.get('/checklist', authorize(...READ_ROLES), asyncHandler(applicationController.getChecklist));
 
-/** GET /api/v1/applications/stats — the agent / office dashboard numbers. */
+/** GET /api/v1/applications/stats â€” the agent / office dashboard numbers. */
 router.get('/stats', authorize(...READ_ROLES), asyncHandler(applicationController.getStats));
 
 /**
@@ -78,17 +82,17 @@ router.get(
 /**
  * POST /api/v1/applications/credit-check
  * The credit verdict for a consumer's answers before an application exists.
- * Nothing is stored and nothing is refused — a doubtful verdict comes back as a
+ * Nothing is stored and nothing is refused â€” a doubtful verdict comes back as a
  * notice for the agent, because the flow must never stop here.
  */
 router.post(
   '/credit-check',
-  authorize(...FIELD_AGENT_ROLES),
+  authorize(...APPLICATION_WRITE_ROLES),
   validate(creditCheckPreviewSchema),
   asyncHandler(applicationController.previewCreditCheck)
 );
 
-/** GET /api/v1/applications — agents see their own, the office sees all. */
+/** GET /api/v1/applications â€” agents see their own, the office sees all. */
 router.get(
   '/',
   authorize(...READ_ROLES),
@@ -96,10 +100,16 @@ router.get(
   asyncHandler(applicationController.listApplications)
 );
 
-/** POST /api/v1/applications — the field agent opens a new consumer application (draft). */
+/**
+ * POST /api/v1/applications — file an application for a verified customer.
+ *
+ * Office only. The payload names a customer (see createApplicationSchema) and
+ * the consumer's identity is read from that record, so this route is a decision
+ * ("this customer becomes an application"), not data entry.
+ */
 router.post(
   '/',
-  authorize(...FIELD_AGENT_ROLES),
+  authorize(...REVIEW_ROLES),
   validate(createApplicationSchema),
   asyncHandler(applicationController.createApplication)
 );
@@ -112,19 +122,19 @@ router.get(
   asyncHandler(applicationController.getApplication)
 );
 
-/** PATCH /api/v1/applications/:id — the agent edits while draft / correction. */
+/** PATCH /api/v1/applications/:id â€” the agent edits while draft / correction. */
 router.patch(
   '/:id',
-  authorize(...FIELD_AGENT_ROLES),
+  authorize(...APPLICATION_WRITE_ROLES),
   validateParams(applicationIdParamSchema),
   validate(updateApplicationSchema),
   asyncHandler(applicationController.updateApplication)
 );
 
-/** POST /api/v1/applications/:id/submit — leaves the agent's hands. */
+/** POST /api/v1/applications/:id/submit â€” leaves the agent's hands. */
 router.post(
   '/:id/submit',
-  authorize(...FIELD_AGENT_ROLES),
+  authorize(...APPLICATION_WRITE_ROLES),
   validateParams(applicationIdParamSchema),
   validate(submitApplicationSchema),
   asyncHandler(applicationController.submitApplication)
@@ -134,27 +144,27 @@ router.post(
 
 /**
  * POST /api/v1/applications/:id/documents
- * Upload one checklist document. Rejected here when the picture is not clear —
+ * Upload one checklist document. Rejected here when the picture is not clear â€”
  * the response carries the reasons so the form can say "picture clear nahi hai".
  */
 router.post(
   '/:id/documents',
-  authorize(...FIELD_AGENT_ROLES),
+  authorize(...APPLICATION_WRITE_ROLES),
   validateParams(applicationIdParamSchema),
   uploadSingleToMemory('file'),
   validate(addDocumentSchema),
   asyncHandler(applicationController.uploadDocument)
 );
 
-/** DELETE /api/v1/applications/:id/documents/:documentId — the agent withdraws their own upload. */
+/** DELETE /api/v1/applications/:id/documents/:documentId â€” the agent withdraws their own upload. */
 router.delete(
   '/:id/documents/:documentId',
-  authorize(...FIELD_AGENT_ROLES),
+  authorize(...APPLICATION_WRITE_ROLES),
   validateParams(documentParamSchema),
   asyncHandler(applicationController.deleteDocument)
 );
 
-/** PATCH /api/v1/applications/:id/documents/:documentId/review — office verdict. */
+/** PATCH /api/v1/applications/:id/documents/:documentId/review â€” office verdict. */
 router.patch(
   '/:id/documents/:documentId/review',
   authorize(...REVIEW_ROLES),
@@ -165,16 +175,16 @@ router.patch(
 
 // ================== electricity bill ==================
 
-/** PUT /api/v1/applications/:id/electric-bill — the agent records the two ids. */
+/** PUT /api/v1/applications/:id/electric-bill â€” the agent records the two ids. */
 router.put(
   '/:id/electric-bill',
-  authorize(...FIELD_AGENT_ROLES),
+  authorize(...APPLICATION_WRITE_ROLES),
   validateParams(applicationIdParamSchema),
   validate(electricBillSchema),
   asyncHandler(applicationController.setElectricBill)
 );
 
-/** GET /api/v1/applications/:id/electric-bill/portal — where to download the bill. */
+/** GET /api/v1/applications/:id/electric-bill/portal â€” where to download the bill. */
 router.get(
   '/:id/electric-bill/portal',
   authorize(...READ_ROLES),
@@ -182,7 +192,7 @@ router.get(
   asyncHandler(applicationController.getElectricBillPortal)
 );
 
-/** PATCH /api/v1/applications/:id/electric-bill/verify — office confirms the ids match the bill. */
+/** PATCH /api/v1/applications/:id/electric-bill/verify â€” office confirms the ids match the bill. */
 router.patch(
   '/:id/electric-bill/verify',
   authorize(...REVIEW_ROLES),
@@ -193,17 +203,17 @@ router.patch(
 
 // ==================== name match ====================
 
-/** POST /api/v1/applications/:id/name-match — recompute the three-name check from the agent's files. */
+/** POST /api/v1/applications/:id/name-match â€” recompute the three-name check from the agent's files. */
 router.post(
   '/:id/name-match',
-  authorize(...FIELD_AGENT_ROLES),
+  authorize(...APPLICATION_WRITE_ROLES),
   validateParams(applicationIdParamSchema),
   asyncHandler(applicationController.runNameMatch)
 );
 
 // ====================== review ======================
 
-/** PATCH /api/v1/applications/:id/review — approve / send back / reject. */
+/** PATCH /api/v1/applications/:id/review â€” approve / send back / reject. */
 router.patch(
   '/:id/review',
   authorize(...REVIEW_ROLES),
@@ -212,7 +222,7 @@ router.patch(
   asyncHandler(applicationController.reviewApplication)
 );
 
-/** PATCH /api/v1/applications/:id/status — move along the workflow. */
+/** PATCH /api/v1/applications/:id/status â€” move along the workflow. */
 router.patch(
   '/:id/status',
   authorize(...REVIEW_ROLES),
@@ -233,10 +243,10 @@ router.post(
   asyncHandler(applicationController.uploadSignedDocument)
 );
 
-/** DELETE /api/v1/applications/:id — the agent discards a draft or a sent-back one. */
+/** DELETE /api/v1/applications/:id â€” the agent discards a draft or a sent-back one. */
 router.delete(
   '/:id',
-  authorize(...FIELD_AGENT_ROLES),
+  authorize(...APPLICATION_WRITE_ROLES),
   validateParams(applicationIdParamSchema),
   asyncHandler(applicationController.deleteApplication)
 );

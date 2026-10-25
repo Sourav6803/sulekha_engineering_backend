@@ -128,7 +128,16 @@ export const createApplicationSchema = Joi.object({
   nameMatch: nameMatchSchema,
   creditCheck: creditCheckSchema,
 
-  customer: objectId.allow(null),
+  /*
+   * Required now. An application is the scheme paperwork for a customer the
+   * office has already verified — it is never a place to type a new person's
+   * Aadhaar. Keeping this optional is what allowed the same consumer to exist
+   * as two unrelated records.
+   */
+  customer: objectId.required().messages({
+    'any.required': 'Choose the customer this application is for — applications are created from a customer record.',
+    'any.invalid': 'That customer reference is not valid.',
+  }),
 });
 
 export const updateApplicationSchema = Joi.object({

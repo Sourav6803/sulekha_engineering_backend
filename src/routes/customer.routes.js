@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { authenticate, authorize } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -15,10 +15,10 @@ router.get('/search', validate(customerValidation.searchCustomersValidation, 'qu
 router.get('/:id', validate(customerValidation.getCustomerValidation, 'params'), asyncHandler(customerController.getCustomer));
 router.get('/:id/installations', validate(customerValidation.getCustomerInstallationsValidation, 'params'), asyncHandler(customerController.getCustomerInstallations));
 router.get('/:id/history', validate(customerValidation.getCustomerHistoryValidation, 'params'), asyncHandler(customerController.getCustomerHistory));
-router.post('/', authorize('admin', 'manager'), validate(customerValidation.createCustomerValidation), asyncHandler(customerController.createCustomer));
-router.put('/:id', authorize('admin', 'manager'), validate(customerValidation.updateCustomerValidation), asyncHandler(customerController.updateCustomer));
+router.post('/', authorize('admin', 'manager', 'agent'), validate(customerValidation.createCustomerValidation), asyncHandler(customerController.createCustomer));
+router.put('/:id', authorize('admin', 'manager', 'agent'), validate(customerValidation.updateCustomerValidation), asyncHandler(customerController.updateCustomer));
 router.delete('/:id', authorize('admin'), validate(customerValidation.deleteCustomerValidation, 'params'), asyncHandler(customerController.deleteCustomer));
-router.post('/:id/documents', authorize('admin', 'manager'), uploadMultiple('documents', 10), validate(customerValidation.uploadDocumentBodyValidation, 'body'), validate(customerValidation.uploadDocumentParamsValidation, 'params'), asyncHandler(customerController.uploadCustomerDocument));
-router.delete('/:id/documents/:documentId', authorize('admin', 'manager'), validate(customerValidation.deleteDocumentValidation, 'params'), asyncHandler(customerController.deleteCustomerDocument));
+router.post('/:id/documents', authorize('admin', 'manager', 'agent'), uploadMultiple('documents', 10), validate(customerValidation.uploadDocumentBodyValidation, 'body'), validate(customerValidation.uploadDocumentParamsValidation, 'params'), asyncHandler(customerController.uploadCustomerDocument));
+router.delete('/:id/documents/:documentId', authorize('admin', 'manager', 'agent'), validate(customerValidation.deleteDocumentValidation, 'params'), asyncHandler(customerController.deleteCustomerDocument));
 
 export default router;

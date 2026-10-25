@@ -55,6 +55,7 @@ export const createCustomerValidation = Joi.object({
     'any.required': 'Address is required',
     'string.max': 'Address cannot exceed 500 characters',
   }),
+  district: Joi.string().trim().max(100).allow('', null),
   city: Joi.string().required().messages({
     'any.required': 'City is required',
   }),
@@ -90,6 +91,14 @@ export const createCustomerValidation = Joi.object({
     .messages({
       'string.pattern.base': 'Please enter a valid GST number',
     }),
+  /* KYC, collected with the rest of the customer's papers. Required on the
+     application form, optional here so an agent can save a half-taken record. */
+  aadhaarNumber: Joi.string()
+    .pattern(/^[0-9]{12}$/)
+    .allow('', null)
+    .messages({
+      'string.pattern.base': 'Aadhaar number must be 12 digits',
+    }),
   panNumber: Joi.string()
     .pattern(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/)
     .messages({
@@ -108,6 +117,7 @@ export const updateCustomerValidation = Joi.object({
   alternatePhone: Joi.string().pattern(/^[0-9]{10}$/),
   email: Joi.string().email(),
   address: Joi.string().max(500),
+  district: Joi.string().trim().max(100).allow('', null),
   city: Joi.string(),
   state: Joi.string(),
   pincode: Joi.string().pattern(/^[0-9]{6}$/),
@@ -120,6 +130,9 @@ export const updateCustomerValidation = Joi.object({
   roofArea: Joi.number().min(0).max(10000),
   gstNumber: Joi.string()
     .pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/),
+  aadhaarNumber: Joi.string()
+    .pattern(/^[0-9]{12}$/)
+    .allow('', null),
   panNumber: Joi.string()
     .pattern(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/),
   preferredInstallationDate: Joi.date(),
@@ -134,6 +147,7 @@ export const listCustomersValidation = Joi.object({
   page: Joi.number().min(1).default(1),
   limit: Joi.number().min(1).max(100).default(20),
   status: customerStatus,
+  district: Joi.string().trim().max(100).allow('', null),
   city: Joi.string(),
   state: Joi.string(),
   roofType: roofType,

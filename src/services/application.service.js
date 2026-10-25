@@ -1,5 +1,26 @@
 // src/services/application.service.js
 import Application from '../models/Application.js';
+import Customer from '../models/Customer.js';
+import User from '../models/User.js';
+
+/**
+ * Customer document type → application document kind.
+ *
+ * The customer record collects the paper the agent photographed at the house
+ * (aadhar, sitePhotoBefore, quotation…); the application's checklist names the
+ * same papers for the scheme (aadhaar, rooftopPhoto, signedQuotation…). Only the
+ * pairs that genuinely match are mapped; everything else lands in "other".
+ */
+const CUSTOMER_TO_APPLICATION_DOC = {
+  aadhar: 'aadhaar',
+  panCard: 'panCard',
+  electricBill: 'electricBill',
+  landRecord: 'landRecord',
+  passbookOrCheque: 'passbookOrCheque',
+  sitePhotoBefore: 'rooftopPhoto',
+  quotation: 'signedQuotation',
+  agreement: 'signedAgreement',
+};
 import logger from '../utils/logger.js';
 import { ApiError } from '../utils/ApiError.js';
 import { escapeRegex } from '../utils/escapeRegex.js';
@@ -349,22 +370,99 @@ class ApplicationService {
 
   // ============================ WRITE ============================
 
-  async createApplication(body = {}, user) {
-    const aadhaar = body.aadhaarNumber || null;
-    const phone = body.phone || null;
+  /**
+   * The applicant's identity, taken from the customer record.
+   *
+   * The customer is the record of truth for who the person is; the application
+   * copies these once, at creation, so a later edit to the customer does not
+   * silently rewrite paperwork that has already been sent to a bank.
+   */
+  identityFromCustomer(customer) {
+    return {
+      consumerName: customer.name,
+      phone: customer.phone,
+      alternatePhone: customer.alternatePhone || undefined,
+      aadhaarNumber: customer.aadhaarNumber || undefined,
+      panNumber: customer.panNumber || undefined,
+      email: customer.email || undefined,
+      address: {
+        street: customer.street || undefined,
+        village: customer.village || undefined,
+        block: customer.block || undefined,
+        panchayat: customer.panchayat || undefined,
+        district: customer.district || undefined,
+        city: customer.city || undefined,
+        state: customer.state || undefined,
+        pincode: customer.pincode || undefined,
+        fullAddress: customer.address || undefined,
+      },
+    };
+  }
 
-    // A consumer may raise only one PM Surya Ghar application, so catch the
-    // duplicate while the agent is still standing in front of them.
-    if (aadhaar || phone) {
-      const duplicate = await this.findDuplicate({ aadhaar, phone });
-      if (duplicate) {
-        throw new ApiError(
-          409,
-          `An application for this consumer already exists (${duplicate.applicationNo}, status: ${duplicate.status}). Open it instead of creating a new one.`,
-          'DUPLICATE_APPLICATION',
-          { applicationId: duplicate._id, applicationNo: duplicate.applicationNo }
-        );
-      }
+  async createApplication(body = {}, user) {
+    /*
+     * An application now begins with a customer, not with a blank form.
+     *
+     * The person is already on file — name, Aadhaar, address, documents — because
+     * a field agent or the office recorded them as a Customer. Typing those
+     * fields again here is exactly how one household ended up as two unrelated
+     * records, so the payload names a customer and the identity is read from it.
+     */
+    const customerId = body.customer;
+    if (!customerId) {
+      throw ApiError.badRequest(
+        'Choose the customer this application is for — applications are created from a customer record.'
+      );
+    }
+
+    const customer = await Customer.findById(customerId).lean();
+    if (!customer || customer.isActive === false) throw ApiError.notFound('Customer');
+
+    if (customer.status === 'pending_verification') {
+      throw ApiError.badRequest(
+        `${customer.name}'s documents have not been verified yet. Verify the customer first, then create the application.`
+      );
+    }
+    if (customer.status === 'blocked') {
+      throw ApiError.badRequest(`${customer.name} is blocked. Unblock the customer before filing an application.`);
+    }
+
+    const identity = this.identityFromCustomer(customer);
+
+    /*
+     * The system size was agreed on the site visit and recorded on the customer.
+     * The deal block is where the application quotes it, so it is copied once —
+     * the wizard then shows it read-only instead of letting the two drift apart.
+     */
+    if (customer.systemSizeKW && !body.deal?.systemSizeKW) {
+      body = { ...body, deal: { ...(body.deal ?? {}), systemSizeKW: customer.systemSizeKW } };
+    }
+
+    /*
+     * One application per consumer. The customer link is the strongest signal,
+     * but the Aadhaar and phone checks stay: they catch the household that was
+     * entered twice as two customers before this change.
+     */
+    const duplicateFilter = [{ customer: customer._id }];
+    if (identity.aadhaarNumber) duplicateFilter.push({ aadhaarNumber: identity.aadhaarNumber });
+    if (identity.phone) duplicateFilter.push({ phone: identity.phone });
+
+    const duplicate = await Application.findOne({
+      isActive: true,
+      // A rejected application does not block a fresh attempt.
+      status: { $ne: 'rejected' },
+      $or: duplicateFilter,
+    })
+      .select('applicationNo status _id')
+      .lean();
+
+    if (duplicate) {
+      throw new ApiError(
+        409,
+        `An application for this customer already exists (${duplicate.applicationNo}, status: ${duplicate.status}). Open it instead of creating a new one.`,
+        'DUPLICATE_APPLICATION',
+        { applicationId: duplicate._id, applicationNo: duplicate.applicationNo }
+      );
     }
 
     let applicationNo;
@@ -376,11 +474,47 @@ class ApplicationService {
       applicationNo = `SE/APP/${new Date().getFullYear()}/${Date.now().toString().slice(-6)}`;
     }
 
+    /*
+     * The agent of record is the one who collected the customer, not whoever
+     * pressed the button — the office files from a verified customer, and the
+     * field agent still needs to see what became of their visit.
+     */
+    const ownerAgentId = customer.ownerAgent || user._id;
+    let agentNameSnapshot = user.name;
+    if (String(ownerAgentId) !== String(user._id)) {
+      const owner = await User.findById(ownerAgentId).select('name').lean();
+      agentNameSnapshot = owner?.name || user.name;
+    }
+
+    /*
+     * The papers the agent photographed at the house travel with the
+     * application, so the office reviews one screen instead of opening the
+     * customer record beside it. Only the identifying fields are copied — the
+     * review state starts clean on this copy, and the files themselves are the
+     * same URLs.
+     */
+    const carriedDocuments = (customer.documents ?? [])
+      .filter((doc) => doc?.url)
+      .map((doc) => ({
+        // The two records name the same paper differently; the application's
+        // enum wins. Anything without a counterpart is kept as "other" rather
+        // than dropped — a voter card is still evidence of address.
+        kind: CUSTOMER_TO_APPLICATION_DOC[doc.type] ?? 'other',
+        url: doc.url,
+        fileName: doc.fileName,
+        fileSize: doc.fileSize,
+        fileType: doc.fileType,
+        uploadedAt: doc.uploadedAt,
+      }));
+
     const application = new Application({
       ...body,
+      ...identity,
+      ...(carriedDocuments.length > 0 ? { documents: carriedDocuments } : {}),
+      customer: customer._id,
       applicationNo,
-      agent: user._id,
-      agentNameSnapshot: user.name,
+      agent: ownerAgentId,
+      agentNameSnapshot,
       status: 'draft',
       createdBy: user._id,
       updatedBy: user._id,
