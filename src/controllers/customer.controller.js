@@ -443,6 +443,28 @@ export const uploadCustomerDocument = async (req, res) => {
     throw ApiError.badRequest('Invalid document type');
   }
 
+  /*
+   * An agent files only what was collected at the house. DCR certificate, panel
+   * serials, quotation, agreement and the feasibility papers are produced by the
+   * office later, so letting the field path file them would corrupt the record's
+   * provenance. Enforced here as well as in the UI — the UI is not a gate.
+   */
+  const FIELD_UPLOAD_TYPES = [
+    'aadhar',
+    'panCard',
+    'passbookOrCheque',
+    'electricBill',
+    'sitePhotoBefore',
+    'landRecord',
+    'casteCertificate',
+  ];
+
+  if (!isOffice(req.user) && !FIELD_UPLOAD_TYPES.includes(type)) {
+    throw ApiError.forbidden(
+      'A field agent can only upload the documents collected at the house. The office files the rest.'
+    );
+  }
+
   const customer = await Customer.findById(id);
   assertCanReadCustomer(customer, req.user);
 
