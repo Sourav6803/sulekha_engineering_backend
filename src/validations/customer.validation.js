@@ -23,6 +23,57 @@ const panelSerialNumbers = Joi.array()
   .max(100)
   .custom((values) => values.filter((value) => value !== ''));
 
+/**
+ * The site visit, as the agent recorded it at the consumer's house.
+ *
+ * These blocks used to belong to the application wizard. They are part of the
+ * customer now — the visit produces a customer, and the office files an
+ * application from that record — so every one of them is optional here: an agent
+ * may save a half-taken record and finish it later.
+ */
+const siteType = Joi.string()
+  .valid('rcc_rooftop', 'tin_shed', 'high_rise_structure', 'ground_mount')
+  .allow(null, '');
+
+const dealSchema = Joi.object({
+  proposalAmount: Joi.number().min(0).max(100000000),
+  quotedAmount: Joi.number().min(0).max(100000000),
+  intentionToProceed: Joi.string().valid('yes', 'no', 'undecided').allow(null, ''),
+});
+
+const loanSchema = Joi.object({
+  asked: Joi.boolean(),
+  hasExistingLoan: Joi.boolean().allow(null),
+  lenderName: Joi.string().max(200).allow('', null),
+  loanAmount: Joi.number().min(0),
+  outstandingAmount: Joi.number().min(0),
+  monthlyEmi: Joi.number().min(0),
+  consumerInformed: Joi.boolean(),
+  remark: Joi.string().max(1000).allow('', null),
+});
+
+const creditCheckSchema = Joi.object({
+  bank: Joi.string().max(40).allow('', null),
+  method: Joi.string().valid('consumer_self_check', 'bank_portal', 'agent_estimate', 'other'),
+  score: Joi.number().min(0).max(900).allow(null),
+  defaultOrWriteOff: Joi.boolean(),
+  newToCredit: Joi.boolean(),
+  status: Joi.string().valid('pass', 'review', 'fail', 'not_checked'),
+  note: Joi.string().max(500).allow('', null),
+});
+
+const electricBillSchema = Joi.object({
+  consumerId: Joi.string().max(40).allow('', null),
+  installationNo: Joi.string().max(40).allow('', null),
+  verified: Joi.boolean(),
+});
+
+const nameMatchSchema = Joi.object({
+  consumerName: Joi.string().max(100).allow('', null),
+  aadhaarName: Joi.string().max(100).allow('', null),
+  passbookName: Joi.string().max(100).allow('', null),
+  electricBillName: Joi.string().max(100).allow('', null),
+});
 
 export const createCustomerValidation = Joi.object({
   name: Joi.string()
@@ -106,6 +157,13 @@ export const createCustomerValidation = Joi.object({
     }),
   preferredInstallationDate: Joi.date(),
   preferredTimeSlot: Joi.string().valid('morning', 'afternoon', 'evening', 'anytime'),
+  siteType,
+  siteNotes: Joi.string().max(1000).allow('', null),
+  deal: dealSchema,
+  loan: loanSchema,
+  creditCheck: creditCheckSchema,
+  electricBill: electricBillSchema,
+  nameMatch: nameMatchSchema,
   notes: Joi.string().max(1000),
   referredBy: Joi.string().max(100),
   panelSerialNumbers,
@@ -138,9 +196,22 @@ export const updateCustomerValidation = Joi.object({
   preferredInstallationDate: Joi.date(),
   preferredTimeSlot: Joi.string().valid('morning', 'afternoon', 'evening', 'anytime'),
   status: customerStatus,
+  siteType,
+  siteNotes: Joi.string().max(1000).allow('', null),
+  deal: dealSchema,
+  loan: loanSchema,
+  creditCheck: creditCheckSchema,
+  electricBill: electricBillSchema,
+  nameMatch: nameMatchSchema,
   notes: Joi.string().max(1000),
   referredBy: Joi.string().max(100),
   panelSerialNumbers,
+});
+
+/** POST /customers/:id/verify — the office's clearance of the intake. */
+export const verifyCustomerValidation = Joi.object({
+  status: Joi.string().valid('verified', 'rejected', 'pending').default('verified'),
+  note: Joi.string().max(1000).allow('', null),
 });
 
 export const listCustomersValidation = Joi.object({

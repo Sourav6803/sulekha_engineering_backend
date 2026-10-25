@@ -333,6 +333,27 @@ const ApplicationSchema = new Schema(
       /** Per-document verdicts keyed by document _id, for the checklist UI. */
     },
 
+    /**
+     * The PM Surya Ghar filing — the office's part.
+     *
+     * The consumer, the site and the deal are the customer's record; this block is
+     * what only exists once the office files on the portal. Filled by whoever the
+     * office assigns, never by the field agent at the house.
+     */
+    scheme: {
+      portalApplicationNo: { type: String, trim: true, uppercase: true },
+      submittedOn: Date,
+      sanctionedCapacityKW: { type: Number, min: 0, max: 1000 },
+      subsidyAmount: { type: Number, min: 0 },
+      discom: { type: String, trim: true, maxlength: 120 },
+      category: {
+        type: String,
+        enum: ['residential', 'group_housing', 'other', null],
+        default: 'residential',
+      },
+      note: { type: String, trim: true, maxlength: 1000 },
+    },
+
     // ------------------------------------------------------------------ links
     customer: { type: Schema.Types.ObjectId, ref: 'Customer' },
     quotation: { type: Schema.Types.ObjectId, ref: 'Quotation' },

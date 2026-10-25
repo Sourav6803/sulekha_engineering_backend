@@ -3,7 +3,7 @@ import { Customer, Installation } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import logger from '../utils/logger.js';
-import { redisGet, redisSet, redisDel } from '../config/redis.js';
+import { redisGet, redisSet, redisDel, redisKeys } from '../config/redis.js';
 import { uploadToCloudinary } from '../services/storage.service.js';
 
 const CACHE_TTL = 3600; // 1 hour
@@ -182,9 +182,16 @@ export const createCustomer = async (req, res) => {
     ? customerData.status || 'active'
     : 'pending_verification';
 
+  /* The office creating a customer has the papers in hand, so the record starts
+     cleared; the field path always starts pending, whatever the body claimed. */
+  const verification = isOffice(req.user)
+    ? { status: 'verified', by: req.userId, at: new Date(), note: 'Created by the office' }
+    : { status: 'pending' };
+
   const customer = await Customer.create({
     ...customerData,
     status,
+    verification,
     ownerAgent,
     customerId,
     createdBy: req.userId,
@@ -210,8 +217,14 @@ export const updateCustomer = async (req, res) => {
   const customer = await Customer.findById(id);
   assertCanReadCustomer(customer, req.user);
 
-  // Ownership is the office's to reassign, not the agent's to give away.
-  if (!isOffice(req.user)) delete updateData.ownerAgent;
+  /* Ownership is the office's to reassign. Verification is the office's decision
+     too: without this, an agent could PUT status: "active" on their own customer
+     and walk straight past the gate that application filing depends on. */
+  if (!isOffice(req.user)) {
+    delete updateData.ownerAgent;
+    delete updateData.status;
+    delete updateData.verification;
+  }
 
   // Check phone uniqueness if updating
   if (updateData.phone && updateData.phone !== customer.phone) {
@@ -236,6 +249,50 @@ export const updateCustomer = async (req, res) => {
   logger.info(`Customer updated: ${customer.customerId} - ${customer.name}`);
 
   return ApiResponse.send(res, customer, 'Customer updated successfully');
+};
+
+/**
+ * Verify a customer — the office's check of the papers collected in the field.
+ *
+ * This is the gate the application depends on: POST /applications refuses any
+ * customer whose verification is not `verified`. Kept apart from updateCustomer
+ * so the decision is one explicit call with its own audit fields, instead of a
+ * side effect of somebody correcting an address.
+ */
+export const verifyCustomer = async (req, res) => {
+  const { id } = req.params;
+  const { status = 'verified', note } = req.body;
+
+  const customer = await Customer.findById(id);
+  if (!customer) throw ApiError.notFound('Customer');
+
+  customer.verification = {
+    status,
+    by: req.userId,
+    at: new Date(),
+    note: note || undefined,
+  };
+
+  /* The lifecycle status follows the verdict: cleared papers make the customer
+     active, a rejection sends it back to pending, and a blocked record stays
+     blocked until somebody unblocks it deliberately. */
+  if (status === 'verified') customer.status = 'active';
+  else if (status === 'rejected' && customer.status !== 'blocked') {
+    customer.status = 'pending_verification';
+  }
+
+  customer.updatedBy = req.userId;
+  await customer.save();
+
+  // Both caches: the record itself and every paged list.
+  await redisDel(`customer:${id}`);
+  await redisKeys('customers:list:*')
+    .then((keys) => (keys.length ? Promise.all(keys.map((key) => redisDel(key))) : null))
+    .catch(() => null);
+
+  logger.info(`Customer ${status}: ${customer.customerId} - ${customer.name}`);
+
+  return ApiResponse.send(res, customer, `Customer ${status}`);
 };
 
 /**

@@ -17,6 +17,18 @@ router.get('/:id/installations', validate(customerValidation.getCustomerInstalla
 router.get('/:id/history', validate(customerValidation.getCustomerHistoryValidation, 'params'), asyncHandler(customerController.getCustomerHistory));
 router.post('/', authorize('admin', 'manager', 'agent'), validate(customerValidation.createCustomerValidation), asyncHandler(customerController.createCustomer));
 router.put('/:id', authorize('admin', 'manager', 'agent'), validate(customerValidation.updateCustomerValidation), asyncHandler(customerController.updateCustomer));
+
+/**
+ * The office clears the intake. Agents collect the papers but never verify them —
+ * that is what stops an agent from filing their own customer straight through.
+ */
+router.post(
+  '/:id/verify',
+  authorize('admin', 'manager'),
+  validate(customerValidation.verifyCustomerValidation),
+  asyncHandler(customerController.verifyCustomer)
+);
+
 router.delete('/:id', authorize('admin'), validate(customerValidation.deleteCustomerValidation, 'params'), asyncHandler(customerController.deleteCustomer));
 router.post('/:id/documents', authorize('admin', 'manager', 'agent'), uploadMultiple('documents', 10), validate(customerValidation.uploadDocumentBodyValidation, 'body'), validate(customerValidation.uploadDocumentParamsValidation, 'params'), asyncHandler(customerController.uploadCustomerDocument));
 router.delete('/:id/documents/:documentId', authorize('admin', 'manager', 'agent'), validate(customerValidation.deleteDocumentValidation, 'params'), asyncHandler(customerController.deleteCustomerDocument));

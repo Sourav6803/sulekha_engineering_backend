@@ -418,9 +418,18 @@ class ApplicationService {
     const customer = await Customer.findById(customerId).lean();
     if (!customer || customer.isActive === false) throw ApiError.notFound('Customer');
 
-    if (customer.status === 'pending_verification') {
+    /*
+     * The gate: only a customer the office has cleared may become an application.
+     *
+     * `verification.status` is the real signal; `status: 'active'` is the fallback
+     * for records that predate the verification block, so the backfill does not
+     * have to run before the office can file.
+     */
+    const verified = customer.verification?.status === 'verified' || (!customer.verification && customer.status === 'active');
+
+    if (!verified) {
       throw ApiError.badRequest(
-        `${customer.name}'s documents have not been verified yet. Verify the customer first, then create the application.`
+        `${customer.name}'s papers have not been verified yet. Verify the customer first, then file the application.`
       );
     }
     if (customer.status === 'blocked') {
@@ -429,14 +438,23 @@ class ApplicationService {
 
     const identity = this.identityFromCustomer(customer);
 
-    /*
-     * The system size was agreed on the site visit and recorded on the customer.
-     * The deal block is where the application quotes it, so it is copied once —
-     * the wizard then shows it read-only instead of letting the two drift apart.
-     */
-    if (customer.systemSizeKW && !body.deal?.systemSizeKW) {
-      body = { ...body, deal: { ...(body.deal ?? {}), systemSizeKW: customer.systemSizeKW } };
-    }
+    /* The site visit travels with the application: whatever the agent recorded at
+       the house is what the scheme paperwork quotes, so it is copied once and the
+       wizard shows it read-only instead of letting the two drift apart. */
+    body = {
+      ...body,
+      siteType: customer.siteType ?? body.siteType ?? null,
+      siteNotes: body.siteNotes ?? customer.siteNotes,
+      deal: {
+        ...(customer.deal ?? {}),
+        ...(body.deal ?? {}),
+        systemSizeKW: body.deal?.systemSizeKW ?? customer.systemSizeKW,
+      },
+      loan: body.loan ?? customer.loan,
+      creditCheck: body.creditCheck ?? customer.creditCheck,
+      electricBill: body.electricBill ?? customer.electricBill,
+      nameMatch: body.nameMatch ?? customer.nameMatch,
+    };
 
     /*
      * One application per consumer. The customer link is the strongest signal,

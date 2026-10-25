@@ -133,6 +133,68 @@ const CustomerSchema = new Schema({
     description: 'Available roof area in square feet'
   },
 
+  /*
+   * The site-visit record.
+   *
+   * Everything from `siteType` to `creditCheck` used to be typed into the
+   * application wizard at the consumer's house. The visit is what produces a
+   * customer now, so it is recorded here; an application copies it once when the
+   * office files, and never asks for it again.
+   */
+  siteType: {
+    type: String,
+    enum: {
+      values: ['rcc_rooftop', 'tin_shed', 'high_rise_structure', 'ground_mount', null],
+      message: 'Site type must be one of: rcc_rooftop, tin_shed, high_rise_structure, ground_mount'
+    },
+    default: null
+  },
+
+  siteNotes: {
+    type: String,
+    trim: true,
+    maxlength: [1000, 'Site notes cannot exceed 1000 characters']
+  },
+
+  deal: {
+    proposalAmount: { type: Number, min: 0 },
+    quotedAmount: { type: Number, min: 0 },
+    intentionToProceed: {
+      type: String,
+      enum: ['yes', 'no', 'undecided', null],
+      default: null
+    }
+  },
+
+  loan: {
+    asked: { type: Boolean, default: false },
+    hasExistingLoan: { type: Boolean, default: null },
+    lenderName: { type: String, trim: true, maxlength: 200 },
+    loanAmount: { type: Number, min: 0 },
+    outstandingAmount: { type: Number, min: 0 },
+    monthlyEmi: { type: Number, min: 0 },
+    consumerInformed: { type: Boolean, default: false },
+    remark: { type: String, trim: true, maxlength: 1000 }
+  },
+
+  creditCheck: {
+    bank: { type: String, trim: true, uppercase: true, maxlength: 40 },
+    method: {
+      type: String,
+      enum: ['consumer_self_check', 'bank_portal', 'agent_estimate', 'other'],
+      default: 'consumer_self_check'
+    },
+    score: { type: Number, min: 0, max: 900, default: null },
+    defaultOrWriteOff: { type: Boolean, default: false },
+    newToCredit: { type: Boolean, default: false },
+    status: {
+      type: String,
+      enum: ['pass', 'review', 'fail', 'not_checked'],
+      default: 'not_checked'
+    },
+    note: { type: String, trim: true, maxlength: 500 }
+  },
+
   // Additional Details
   gstNumber: {
     type: String,
@@ -262,6 +324,51 @@ const CustomerSchema = new Schema({
    * Trimmed and length-checked by the request schema; a plain string array here so
    * queries over the serials stay simple.
    */
+  /*
+   * The two ids printed on the consumer's electricity bill. The bill file itself
+   * sits in `documents` (type `electricBill`); the admin confirms that the pair
+   * agrees when filing the application, so `verified` is only a hint here.
+   */
+  electricBill: {
+    consumerId: { type: String, trim: true, uppercase: true },
+    installationNo: { type: String, trim: true, uppercase: true },
+    verified: { type: Boolean, default: false }
+  },
+
+  /*
+   * The name read off each paper at the house. The verdict is computed later —
+   * case, punctuation and honorifics are folded, a real mismatch is not.
+   */
+  nameMatch: {
+    consumerName: { type: String, trim: true },
+    aadhaarName: { type: String, trim: true },
+    passbookName: { type: String, trim: true },
+    electricBillName: { type: String, trim: true },
+    verdict: {
+      type: String,
+      enum: ['match', 'near_match', 'mismatch', 'incomplete', null],
+      default: null
+    }
+  },
+
+  /*
+   * The office's clearance of the intake.
+   *
+   * Kept apart from `status` on purpose: a customer can be verified today and
+   * blocked next month, and the audit needs to know who cleared the papers and
+   * when. Only admin and manager may move this — see POST /customers/:id/verify.
+   */
+  verification: {
+    status: {
+      type: String,
+      enum: ['pending', 'verified', 'rejected'],
+      default: 'pending'
+    },
+    by: { type: Schema.Types.ObjectId, ref: 'User' },
+    at: Date,
+    note: { type: String, trim: true, maxlength: 1000 }
+  },
+
   panelSerialNumbers: {
     type: [String],
     default: undefined

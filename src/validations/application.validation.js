@@ -83,6 +83,24 @@ const nameMatchSchema = Joi.object({
 });
 
 /**
+ * The PM Surya Ghar filing — the office's part.
+ *
+ * Everything about the consumer and the site is already on the customer record;
+ * what is entered here is what only exists once the office starts filing on the
+ * portal: the portal reference, when it went in, what was sanctioned, and the
+ * subsidy it carries.
+ */
+const schemeSchema = Joi.object({
+  portalApplicationNo: Joi.string().trim().max(60).allow('', null),
+  submittedOn: Joi.date().allow(null),
+  sanctionedCapacityKW: Joi.number().min(0).max(1000).allow(null),
+  subsidyAmount: Joi.number().min(0).max(100000000).allow(null),
+  discom: Joi.string().trim().max(120).allow('', null),
+  category: Joi.string().valid('residential', 'group_housing', 'other').allow(null),
+  note: Joi.string().trim().max(1000).allow('', null),
+});
+
+/**
  * The credit answer — shape only. The server decides what it means.
  *
  * Deliberately permissive: this must never be able to reject an application, so
@@ -110,10 +128,13 @@ export const creditCheckPreviewSchema = creditCheckSchema.keys({
 // ==================== CREATE / UPDATE ====================
 
 export const createApplicationSchema = Joi.object({
-  // The agent is taken from the access token, never from the body, so an agent
-  // cannot file an application in someone else's name.
-  consumerName: Joi.string().trim().min(2).max(100).required(),
-  phone: phone.required(),
+  /*
+   * The consumer's identity is copied from the customer record, so neither of
+   * these is required here — the server overwrites both from `customer`. They
+   * stay in the schema for the update path and for an older client.
+   */
+  consumerName: Joi.string().trim().min(2).max(100),
+  phone: phone.allow('', null),
   alternatePhone: phone.allow('', null),
   aadhaarNumber: aadhaar.allow('', null),
   panNumber: pan.allow('', null),
@@ -127,17 +148,7 @@ export const createApplicationSchema = Joi.object({
   loan: loanSchema,
   nameMatch: nameMatchSchema,
   creditCheck: creditCheckSchema,
-
-  /*
-   * Required now. An application is the scheme paperwork for a customer the
-   * office has already verified — it is never a place to type a new person's
-   * Aadhaar. Keeping this optional is what allowed the same consumer to exist
-   * as two unrelated records.
-   */
-  customer: objectId.required().messages({
-    'any.required': 'Choose the customer this application is for — applications are created from a customer record.',
-    'any.invalid': 'That customer reference is not valid.',
-  }),
+  scheme: schemeSchema,
 });
 
 export const updateApplicationSchema = Joi.object({
@@ -156,6 +167,7 @@ export const updateApplicationSchema = Joi.object({
   loan: loanSchema,
   nameMatch: nameMatchSchema,
   creditCheck: creditCheckSchema,
+  scheme: schemeSchema,
 }).min(1);
 
 // ==================== ELECTRIC BILL ====================
