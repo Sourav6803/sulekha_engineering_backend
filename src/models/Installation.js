@@ -18,6 +18,20 @@ const InstallationSchema = new Schema({
     required: [true, 'Customer is required']
   },
 
+  /**
+   * The application this installation comes from.
+   *
+   * An installation is never typed in from scratch: the quotation number, the
+   * system size and the roof type are already on the application, and the office
+   * should not be able to disagree with the paperwork by retyping them. The ref
+   * also answers "is this application already installed?" without guessing from
+   * the customer.
+   */
+  application: {
+    type: Schema.Types.ObjectId,
+    ref: 'Application'
+  },
+
   customerNameSnapshot: {
     type: String,
     required: true
@@ -126,6 +140,61 @@ const InstallationSchema = new Schema({
 
   completionDate: {
     type: Date
+  },
+
+  // ---------------------------------------------------------------------------
+  // Evidence — what the crew records while standing on the roof
+  // ---------------------------------------------------------------------------
+
+  /**
+   * One row per panel, with its own serial and its own photograph.
+   *
+   * A rooftop system is six or eight panels, and the warranty claim for a failed
+   * module is made against one serial, not against "the array". Rows are seeded
+   * from the system size on the form and can be added or removed, because the
+   * survey count and the delivered pallet do not always agree.
+   */
+  panelUnits: [
+    {
+      serial: { type: String, trim: true, maxlength: [60, 'Panel serial is too long'] },
+      photoUrl: String,
+      photoPublicId: String,
+      photoFileName: String,
+      addedAt: { type: Date, default: Date.now }
+    }
+  ],
+
+  /** The two site photographs: the array in place, and the new meter. */
+  sitePhotos: {
+    panels: {
+      url: String,
+      publicId: String,
+      fileName: String,
+      uploadedAt: Date
+    },
+    meter: {
+      url: String,
+      publicId: String,
+      fileName: String,
+      uploadedAt: Date
+    }
+  },
+
+  /** The inverter that was actually fitted — make, serial, and a photo of it. */
+  inverter: {
+    brand: { type: String, trim: true, maxlength: [80, 'Inverter brand is too long'] },
+    serial: { type: String, trim: true, maxlength: [60, 'Inverter serial is too long'] },
+    photoUrl: String,
+    photoPublicId: String,
+    photoFileName: String
+  },
+
+  /** The photo with the customer, for the shop's own use. Never required. */
+  marketingPhoto: {
+    url: String,
+    publicId: String,
+    fileName: String,
+    uploadedAt: Date
   },
 
   // Status
@@ -387,6 +456,24 @@ InstallationSchema.statics = {
     );
     const year = new Date().getFullYear();
     return `INST-${year}-${String(counter.seq).padStart(4, '0')}`;
+  },
+
+  /**
+   * Generate the project number, serially.
+   *
+   * It used to be a free-text box, which meant gaps, duplicates and numbers that
+   * only existed in somebody's notebook. The counter is its own sequence, so a
+   * project number never moves when an installation is deleted or renumbered.
+   */
+  async generateProjectNo() {
+    const Counter = mongoose.model('Counter');
+    const counter = await Counter.findByIdAndUpdate(
+      'projectNo',
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    const year = new Date().getFullYear();
+    return `PRJ-${year}-${String(counter.seq).padStart(4, '0')}`;
   },
 
   /**

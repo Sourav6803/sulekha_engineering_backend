@@ -6,7 +6,7 @@
  * Only three things change between agreements:
  *   - the date on page 1,
  *   - the consumer name / consumer id / address (page 1 body and page 4 signature),
- *   - the amount on page 4 and the 50 / 40 / 10 split that follows from it.
+ *   - the amount on page 4 and the 70 / 20 / 10 split that follows from it.
  * Everything below is static, which is why it lives here as data rather than
  * being typed into the template.
  */
@@ -79,14 +79,21 @@ export const AMOUNT_SENTENCE =
  * fixed wording that follows it. {{percent}} {{amount}} are substituted.
  */
 export const PAYMENT_STAGES = [
+  /*
+   * 70 / 20 / 10 — the office's split, revised from 50 / 40 / 10. The advance
+   * carries the material cost of a rooftop system, so it moved up and the
+   * dispatch stage down. The percentages must total 100: `buildPaymentSchedule`
+   * refuses anything else, because a split that does not add up prints an
+   * agreement with a payable balance left unaccounted for.
+   */
   {
     label: 'a)',
-    percent: 50,
+    percent: 70,
     note: 'An advance payment of {{percent}}% of the total project value is payable upon order confirmation. This amount enables project initiation, detailed engineering, and procurement of materials.',
   },
   {
     label: 'b)',
-    percent: 40,
+    percent: 20,
     note: 'of the total project value shall be payable prior to dispatch of materials from our store.',
   },
   {

@@ -1,0 +1,1143 @@
+{
+  "takenAt": "2026-10-25T02:23:08.645Z",
+  "counts": {
+    "customers": 5,
+    "applications": 8,
+    "installations": 5,
+    "quotations": 61,
+    "agreements": 3
+  },
+  "customers": [
+    {
+      "_id": "6a7bfb43538e73b45bc0861d",
+      "customerId": "SE-0003",
+      "name": "Seikh Ansar Ali",
+      "phone": "7908104094",
+      "email": "seikhansarali1234@gmail.com",
+      "address": "Memari, Keotara",
+      "city": "Memari",
+      "state": "West Bengal",
+      "pincode": "713404",
+      "systemSizeKW": 2.94,
+      "roofType": "tin_shed",
+      "roofArea": 500,
+      "preferredInstallationDate": "2026-08-19T00:00:00.000Z",
+      "preferredTimeSlot": "evening",
+      "status": "active",
+      "isActive": true,
+      "createdBy": "6a7ad273f91a079190f7de2d",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "createdAt": "2026-08-12T04:49:07.312Z",
+      "updatedAt": "2026-08-16T08:21:42.604Z",
+      "__v": 5,
+      "block": "Memari",
+      "documents": [
+        {
+          "type": "electricBill",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1786868412/customer-documents/qc3gd85kqbbks1esiqaz.pdf",
+          "fileName": "Amarnath_Daw_Quotation.pdf",
+          "fileSize": 74526,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-16T08:20:13.188Z",
+          "_id": "6a8172bd3e81a457d266d172"
+        },
+        {
+          "type": "aadhar",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1786868413/customer-documents/cwzl25ky6n5esa1e2tcn.pdf",
+          "fileName": "BOM-INST-2026-0003-suggested.pdf",
+          "fileSize": 204564,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-16T08:20:13.777Z",
+          "_id": "6a8172bd3e81a457d266d173"
+        },
+        {
+          "type": "voterId",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1786868413/customer-documents/tsi66sn0pj8klyhccqof.pdf",
+          "fileName": "BOM-6a7c3628e301258f10e8060b-suggested.pdf",
+          "fileSize": 204564,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-16T08:20:13.820Z",
+          "_id": "6a8172bd3e81a457d266d174"
+        },
+        {
+          "type": "passbookOrCheque",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1786868413/customer-documents/chltktqjifddfg6wlv6k.pdf",
+          "fileName": "Shymal_Parui_Resume.pdf",
+          "fileSize": 130639,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-16T08:20:14.350Z",
+          "_id": "6a8172be3e81a457d266d175"
+        },
+        {
+          "type": "panCard",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1786868414/customer-documents/ntmddurpku1nbbnjcpb2.pdf",
+          "fileName": "BOM-INST-2026-0002-suggested.pdf",
+          "fileSize": 204198,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-16T08:20:14.755Z",
+          "_id": "6a8172be3e81a457d266d176"
+        }
+      ],
+      "landmark": "Near College",
+      "panchayat": "Masagram",
+      "village": "Keotara"
+    },
+    {
+      "_id": "6a7e8d2d952f7f88490e25de",
+      "customerId": "SE-0004",
+      "name": "Sourav Bhukta",
+      "phone": "7908104098",
+      "email": "souravbhukta8@gmail.com",
+      "address": "Sonar goria, Jamalpur , Purba Bardhaman",
+      "city": "Burdwan",
+      "state": "West bengal",
+      "pincode": "713404",
+      "systemSizeKW": 2,
+      "roofType": "rcc_rooftop",
+      "roofArea": 30,
+      "preferredInstallationDate": "2026-08-27T00:00:00.000Z",
+      "preferredTimeSlot": "morning",
+      "status": "active",
+      "notes": "Hi",
+      "referredBy": "S Das",
+      "isActive": true,
+      "createdBy": "6a7ad273f91a079190f7de2d",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "createdAt": "2026-08-14T03:36:13.640Z",
+      "updatedAt": "2026-08-15T04:31:51.530Z",
+      "__v": 2,
+      "block": "",
+      "documents": [
+        {
+          "type": "aadhar",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1786768285/customer-documents/xsphthfgaw0dpzg4ecxz.pdf",
+          "fileName": "BOM-INST-2026-0002-suggested.pdf",
+          "fileSize": 204198,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-15T04:31:26.051Z",
+          "_id": "6a7feb9e27bbfb958dbec6af"
+        },
+        {
+          "type": "voterId",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1786768310/customer-documents/husxswejkya6fr2ssbxo.pdf",
+          "fileName": "Shyamal_Parui_Resume.pdf",
+          "fileSize": 130685,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-15T04:31:51.527Z",
+          "_id": "6a7febb727bbfb958dbec6b2"
+        }
+      ],
+      "landmark": "",
+      "panchayat": "",
+      "village": ""
+    },
+    {
+      "_id": "6a7f62b6c2322cf7151272cb",
+      "customerId": "SE-0005",
+      "name": "Jhon Doe",
+      "phone": "8345057928",
+      "email": "s@gmail.com",
+      "address": "Sonar goria, Jamalpur, Burdwan, 713404",
+      "city": "Burdwan",
+      "state": "West Bengal",
+      "pincode": "713404",
+      "systemSizeKW": 3,
+      "roofType": "rcc_rooftop",
+      "roofArea": 50,
+      "preferredInstallationDate": "2026-08-20T00:00:00.000Z",
+      "preferredTimeSlot": "morning",
+      "status": "active",
+      "isActive": true,
+      "createdBy": "6a7ad273f91a079190f7de2d",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "createdAt": "2026-08-14T18:47:18.455Z",
+      "updatedAt": "2026-08-15T02:23:13.003Z",
+      "__v": 0,
+      "block": "",
+      "documents": [],
+      "landmark": "",
+      "panchayat": "",
+      "village": ""
+    },
+    {
+      "_id": "6a87f08ee8b27fcd4e2453d3",
+      "customerId": "SE-0006",
+      "name": "Raj Kumar Dawn",
+      "phone": "9832261761",
+      "address": "Paratal Burdwan ,Pin-713408",
+      "village": "paratal i",
+      "block": "Jamalpur",
+      "panchayat": "Jamalpur",
+      "landmark": "Near Durga mandir",
+      "city": "Burdwan",
+      "state": "West Bengal",
+      "pincode": "713408",
+      "systemSizeKW": 3,
+      "roofType": "tin_shed",
+      "roofArea": 45,
+      "preferredTimeSlot": "anytime",
+      "status": "active",
+      "notes": "Bank account is a Join account",
+      "referredBy": "Nilkomol da",
+      "isActive": true,
+      "createdBy": "6a7ad273f91a079190f7de2d",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "documents": [
+        {
+          "type": "feasibilityApproval",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294065/customer-documents/h2ma50wva2och5rpbyrf.pdf",
+          "fileName": "Raj Kumar Dwan_Feasibility Approval Letter.pdf",
+          "fileSize": 28995,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:34:25.636Z",
+          "_id": "6a87f171e8b27fcd4e2453d4"
+        },
+        {
+          "type": "aadhar",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294065/customer-documents/am3kdbab5nkbokkpezbn.pdf",
+          "fileName": "Raj Kumar Dawn_Adhar.pdf",
+          "fileSize": 145756,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:34:26.034Z",
+          "_id": "6a87f172e8b27fcd4e2453d8"
+        },
+        {
+          "type": "electricBill",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294065/customer-documents/xfasrxo39ucku9ol27v5.pdf",
+          "fileName": "Raj Kumar Dawn_Electric Bill.pdf",
+          "fileSize": 201875,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:34:26.333Z",
+          "_id": "6a87f172e8b27fcd4e2453d9"
+        },
+        {
+          "type": "panCard",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294065/customer-documents/owiostrtsjsjgf7hzxij.pdf",
+          "fileName": "Raj Kumar Dawn_PAN.pdf",
+          "fileSize": 102686,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:34:26.732Z",
+          "_id": "6a87f172e8b27fcd4e2453da"
+        },
+        {
+          "type": "voterId",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294065/customer-documents/brzlpyuzqfsevzh6wsty.pdf",
+          "fileName": "Raj Kumar Dawn_Voter Card.pdf",
+          "fileSize": 128750,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:34:26.833Z",
+          "_id": "6a87f172e8b27fcd4e2453db"
+        },
+        {
+          "type": "rtsFeasibilityReport",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294065/customer-documents/zdssbrccvv795shctqsn.pdf",
+          "fileName": "Raj Kumar Dwan_RTS Fesability Report.pdf",
+          "fileSize": 234693,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:34:26.835Z",
+          "_id": "6a87f172e8b27fcd4e2453dc"
+        },
+        {
+          "type": "sitePhotoBefore",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294066/customer-documents/ms0diyjw08phmluip7lm.jpg",
+          "fileName": "Raj Kumar Dawn_Picture.jpeg",
+          "fileSize": 231919,
+          "fileType": "image/jpeg",
+          "uploadedAt": "2026-08-21T06:34:26.837Z",
+          "_id": "6a87f172e8b27fcd4e2453dd"
+        },
+        {
+          "type": "loanApprovalLetter",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294066/customer-documents/thgcty5rc20jmjjice6y.pdf",
+          "fileName": "Raj Kumar Dawn_DigitalLoanApproval_Letter.pdf",
+          "fileSize": 92034,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:34:26.934Z",
+          "_id": "6a87f172e8b27fcd4e2453de"
+        },
+        {
+          "type": "landRecord",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294066/customer-documents/xcv5xjvpldobaxom7c1f.pdf",
+          "fileName": "Rajkumar Dawn_ Land Record.pdf",
+          "fileSize": 82499,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:34:26.951Z",
+          "_id": "6a87f172e8b27fcd4e2453df"
+        },
+        {
+          "type": "passbookOrCheque",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294067/customer-documents/us6qdp1z8ajjxtspdytm.pdf",
+          "fileName": "Raj Kumar Dawn_Passbook.pdf",
+          "fileSize": 193520,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:34:27.423Z",
+          "_id": "6a87f173e8b27fcd4e2453e0"
+        },
+        {
+          "type": "agreement",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294067/customer-documents/vaalcjtnicxsflefubyz.pdf",
+          "fileName": "Rajkumar_Dawn_Agrement.pdf",
+          "fileSize": 977387,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:34:27.604Z",
+          "_id": "6a87f173e8b27fcd4e2453e1"
+        },
+        {
+          "type": "quotation",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787294067/customer-documents/baqelkz8ghsemutka3ny.pdf",
+          "fileName": "Raj Kumar Dawn _Quotation.pdf",
+          "fileSize": 604218,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:34:27.670Z",
+          "_id": "6a87f173e8b27fcd4e2453e2"
+        }
+      ],
+      "createdAt": "2026-08-21T06:30:38.182Z",
+      "updatedAt": "2026-08-21T06:39:34.395Z",
+      "__v": 12,
+      "email": "rajkumardawn15703@gmail.com"
+    },
+    {
+      "_id": "6a87f488e8b27fcd4e245443",
+      "customerId": "SE-0007",
+      "name": "Dilip Chakraborty",
+      "phone": "9681371456",
+      "alternatePhone": "9832206014",
+      "email": "sovanchakraborty26@gmail.com",
+      "address": "Srikrishnapur, Jotsriram,burdwan ,Pin- 713408",
+      "village": "Srikrishnapur",
+      "block": "Jamalpur",
+      "panchayat": "Jotsriram",
+      "landmark": "Near high school",
+      "city": "Burdwan",
+      "state": "West bengal",
+      "pincode": "713408",
+      "systemSizeKW": 3,
+      "roofType": "rcc_rooftop",
+      "roofArea": 500,
+      "preferredTimeSlot": "anytime",
+      "status": "active",
+      "notes": "20% Own Contribution",
+      "isActive": true,
+      "createdBy": "6a7ad273f91a079190f7de2d",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "documents": [
+        {
+          "type": "feasibilityApproval",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787295430/customer-documents/wq9l1rttdd5gdeptdkhd.pdf",
+          "fileName": "Dilip Chakraborty_Approval Fesability.pdf",
+          "fileSize": 29047,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:57:11.080Z",
+          "_id": "6a87f6c7e8b27fcd4e245444"
+        },
+        {
+          "type": "electricBill",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787295430/customer-documents/swsefvlbq91kqwjypmkf.pdf",
+          "fileName": "Dilip Chakaraborty_Electric Bill.pdf",
+          "fileSize": 59682,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:57:11.182Z",
+          "_id": "6a87f6c7e8b27fcd4e245445"
+        },
+        {
+          "type": "sitePhotoBefore",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787295431/customer-documents/hvcvvr4xdgo2wffla2op.jpg",
+          "fileName": "Dilip Chakraborty_Picture.jpeg",
+          "fileSize": 218029,
+          "fileType": "image/jpeg",
+          "uploadedAt": "2026-08-21T06:57:11.552Z",
+          "_id": "6a87f6c7e8b27fcd4e245446"
+        },
+        {
+          "type": "rtsFeasibilityReport",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787295431/customer-documents/ltryh13ivpgcedl13dou.pdf",
+          "fileName": "Dilip Chakraborty_RTS Feasibility Report.pdf",
+          "fileSize": 220828,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:57:11.588Z",
+          "_id": "6a87f6c7e8b27fcd4e245447"
+        },
+        {
+          "type": "landRecord",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787295431/customer-documents/zhoogmvnytpwqppyktgi.pdf",
+          "fileName": "Dilip Chakraborty_ Land Record.pdf",
+          "fileSize": 322795,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:57:11.915Z",
+          "_id": "6a87f6c7e8b27fcd4e245448"
+        },
+        {
+          "type": "aadhar",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787295431/customer-documents/mjkllggif4mg2pl0plh3.pdf",
+          "fileName": "Dilip Chakraborty_ Adhar.pdf",
+          "fileSize": 385852,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:57:11.921Z",
+          "_id": "6a87f6c7e8b27fcd4e245449"
+        },
+        {
+          "type": "quotation",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787295431/customer-documents/pakifxeqf1oncibjbooj.pdf",
+          "fileName": "Dilip Chakraborty_Quotation.pdf",
+          "fileSize": 425991,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:57:11.945Z",
+          "_id": "6a87f6c7e8b27fcd4e24544a"
+        },
+        {
+          "type": "panCard",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787295431/customer-documents/bq0zydeexfdsjasfxyga.pdf",
+          "fileName": "Dilip Chakraborty_ PAN.pdf",
+          "fileSize": 883426,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:57:12.118Z",
+          "_id": "6a87f6c8e8b27fcd4e24544b"
+        },
+        {
+          "type": "agreement",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787295432/customer-documents/evseuunncaxoegv1yhzk.pdf",
+          "fileName": "Dilip Chakraborty_ Agrement.pdf",
+          "fileSize": 974888,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:57:13.063Z",
+          "_id": "6a87f6c9e8b27fcd4e24545c"
+        },
+        {
+          "type": "passbookOrCheque",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1787295433/customer-documents/aq16dxuvdsleugfeb4xo.pdf",
+          "fileName": "Dilip Chakraborty_ Passbook.pdf",
+          "fileSize": 1689512,
+          "fileType": "application/pdf",
+          "uploadedAt": "2026-08-21T06:57:13.682Z",
+          "_id": "6a87f6c9e8b27fcd4e24545d"
+        }
+      ],
+      "createdAt": "2026-08-21T06:47:36.801Z",
+      "updatedAt": "2026-08-21T06:57:13.683Z",
+      "__v": 10
+    }
+  ],
+  "applications": [
+    {
+      "_id": "6ab7f446576b7d422e21f501",
+      "applicationNo": "SE/APP/2026/0003",
+      "agent": "6a7ad273f91a079190f7de2d",
+      "agentNameSnapshot": "Sourav Bhukta",
+      "consumerName": "ZZ TEST PROBE -- DELETE ME",
+      "phone": "9000000009",
+      "siteType": null,
+      "deal": {
+        "intentionToProceed": null
+      },
+      "loan": {
+        "asked": false,
+        "hasExistingLoan": null,
+        "consumerInformed": false
+      },
+      "electricBill": {
+        "portalUrl": "https://portal.wbsedcl.in/irj/go/km/docs/bills/IFRAME/ViewBillWithoutLogin.html",
+        "verified": false
+      },
+      "nameMatch": {
+        "verdict": null,
+        "passed": null,
+        "mismatched": []
+      },
+      "status": "draft",
+      "isActive": false,
+      "createdBy": "6a7ad273f91a079190f7de2d",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "documents": [],
+      "statusHistory": [
+        {
+          "status": "draft",
+          "at": "2026-09-26T16:35:18.792Z",
+          "by": "6a7ad273f91a079190f7de2d"
+        }
+      ],
+      "createdAt": "2026-09-26T16:35:18.792Z",
+      "updatedAt": "2026-09-26T16:35:34.869Z",
+      "__v": 0
+    },
+    {
+      "_id": "6ab7f553576b7d422e21f502",
+      "applicationNo": "SE/APP/2026/0004",
+      "agent": "6ab7da00bd9e6e0687fb7db3",
+      "agentNameSnapshot": "Sudip Das",
+      "consumerName": "Ranjit Dey",
+      "aadhaarNumber": "453490876576",
+      "panNumber": "DJGPM9768A",
+      "phone": "9775207867",
+      "alternatePhone": null,
+      "email": "sourav6803b@gmail.com",
+      "siteType": "rcc_rooftop",
+      "deal": {
+        "systemSizeKW": 3,
+        "proposalAmount": 210000,
+        "quotedAmount": 210000,
+        "intentionToProceed": "yes"
+      },
+      "loan": {
+        "asked": true,
+        "hasExistingLoan": false,
+        "lenderName": null,
+        "outstandingAmount": null,
+        "monthlyEmi": null,
+        "consumerInformed": true,
+        "remark": "No loan"
+      },
+      "electricBill": {
+        "portalUrl": "https://portal.wbsedcl.in/irj/go/km/docs/bills/IFRAME/ViewBillWithoutLogin.html",
+        "verified": false,
+        "fileName": "472012711795.pdf",
+        "fileUrl": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1790441620/sulekha/applications/SE-APP-2026-0004/peajvrxiq9erdszj0etb.pdf",
+        "consumerId": "502818425",
+        "installationNo": "24616963"
+      },
+      "nameMatch": {
+        "consumerName": "Ranjit Dey",
+        "aadhaarName": "Ranjit Dey",
+        "passbookName": "Ranjit Dey",
+        "electricBillName": "Ranjit Dey",
+        "verdict": "match",
+        "passed": true,
+        "mismatched": [],
+        "message": "The name matches on all three documents.",
+        "checkedAt": "2026-09-26T18:45:07.867Z",
+        "checkedBy": "6ab7da00bd9e6e0687fb7db3"
+      },
+      "status": "submitted",
+      "isActive": true,
+      "createdBy": "6ab7da00bd9e6e0687fb7db3",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "documents": [
+        {
+          "kind": "electricBill",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1790441620/sulekha/applications/SE-APP-2026-0004/peajvrxiq9erdszj0etb.pdf",
+          "publicId": "sulekha/applications/SE-APP-2026-0004/peajvrxiq9erdszj0etb",
+          "fileName": "472012711795.pdf",
+          "fileSize": 59707,
+          "mimeType": "application/pdf",
+          "extras": {
+            "accountType": null
+          },
+          "qualityCheck": {
+            "verdict": "skipped",
+            "score": 100,
+            "reasons": [],
+            "metrics": {
+              "bytes": 59707,
+              "mimeType": "application/pdf",
+              "decoder": null
+            },
+            "checkedAt": "2026-09-26T16:53:31.128Z"
+          },
+          "review": {
+            "status": "pending"
+          },
+          "uploadedBy": "6ab7da00bd9e6e0687fb7db3",
+          "uploadedAt": "2026-09-26T16:53:40.228Z",
+          "_id": "6ab7f894576b7d422e21f503"
+        },
+        {
+          "kind": "aadhaar",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1790527719/sulekha/applications/SE-APP-2026-0004/ak74locgp0ihhjifvlfy.jpg",
+          "publicId": "sulekha/applications/SE-APP-2026-0004/ak74locgp0ihhjifvlfy",
+          "fileName": "adhar card.jpeg",
+          "fileSize": 123397,
+          "mimeType": "image/jpeg",
+          "extras": {
+            "accountType": null
+          },
+          "qualityCheck": {
+            "verdict": "pass",
+            "score": 100,
+            "reasons": [],
+            "metrics": {
+              "bytes": 123397,
+              "mimeType": "image/jpeg",
+              "decoder": null,
+              "width": 1600,
+              "height": 1007,
+              "format": "jpeg",
+              "aspectRatio": 1.59
+            },
+            "checkedAt": "2026-09-27T16:48:33.379Z"
+          },
+          "review": {
+            "status": "accepted",
+            "reviewedBy": "6a7ad273f91a079190f7de2d",
+            "reviewedAt": "2026-09-28T01:47:25.119Z"
+          },
+          "uploadedBy": "6ab7da00bd9e6e0687fb7db3",
+          "uploadedAt": "2026-09-27T16:48:45.174Z",
+          "_id": "6ab948ed00f7b60a1bf18f12"
+        },
+        {
+          "kind": "panCard",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1790527727/sulekha/applications/SE-APP-2026-0004/wrn73zjcfkxgu5xvvzti.jpg",
+          "publicId": "sulekha/applications/SE-APP-2026-0004/wrn73zjcfkxgu5xvvzti",
+          "fileName": "pan card.jpeg",
+          "fileSize": 140879,
+          "mimeType": "image/jpeg",
+          "extras": {
+            "accountType": null
+          },
+          "qualityCheck": {
+            "verdict": "pass",
+            "score": 100,
+            "reasons": [],
+            "metrics": {
+              "bytes": 140879,
+              "mimeType": "image/jpeg",
+              "decoder": null,
+              "width": 1556,
+              "height": 980,
+              "format": "jpeg",
+              "aspectRatio": 1.59
+            },
+            "checkedAt": "2026-09-27T16:48:45.215Z"
+          },
+          "review": {
+            "status": "accepted",
+            "reviewedBy": "6a7ad273f91a079190f7de2d",
+            "reviewedAt": "2026-09-28T01:47:29.571Z"
+          },
+          "uploadedBy": "6ab7da00bd9e6e0687fb7db3",
+          "uploadedAt": "2026-09-27T16:48:48.354Z",
+          "_id": "6ab948f000f7b60a1bf18f16"
+        },
+        {
+          "kind": "rooftopPhoto",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1790527766/sulekha/applications/SE-APP-2026-0004/ahn10eabjge9flwpbdgo.jpg",
+          "publicId": "sulekha/applications/SE-APP-2026-0004/ahn10eabjge9flwpbdgo",
+          "fileName": "rooftop.jpeg",
+          "fileSize": 305705,
+          "mimeType": "image/jpeg",
+          "extras": {
+            "accountType": null
+          },
+          "qualityCheck": {
+            "verdict": "pass",
+            "score": 100,
+            "reasons": [],
+            "metrics": {
+              "bytes": 305705,
+              "mimeType": "image/jpeg",
+              "decoder": null,
+              "width": 1600,
+              "height": 1200,
+              "format": "jpeg",
+              "aspectRatio": 1.33
+            },
+            "checkedAt": "2026-09-27T16:49:15.871Z"
+          },
+          "review": {
+            "status": "pending"
+          },
+          "uploadedBy": "6ab7da00bd9e6e0687fb7db3",
+          "uploadedAt": "2026-09-27T16:49:31.558Z",
+          "_id": "6ab9491b00f7b60a1bf18f1d"
+        },
+        {
+          "kind": "landRecord",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1790527972/sulekha/applications/SE-APP-2026-0004/vgi33qvnvhoo7gjelgqh.jpg",
+          "publicId": "sulekha/applications/SE-APP-2026-0004/vgi33qvnvhoo7gjelgqh",
+          "fileName": "land record.jpeg",
+          "fileSize": 83779,
+          "mimeType": "image/jpeg",
+          "extras": {
+            "accountType": null
+          },
+          "qualityCheck": {
+            "verdict": "pass",
+            "score": 100,
+            "reasons": [],
+            "metrics": {
+              "bytes": 83779,
+              "mimeType": "image/jpeg",
+              "decoder": null,
+              "width": 738,
+              "height": 1600,
+              "format": "jpeg",
+              "aspectRatio": 0.46
+            },
+            "checkedAt": "2026-09-27T16:52:44.780Z"
+          },
+          "review": {
+            "status": "pending"
+          },
+          "uploadedBy": "6ab7da00bd9e6e0687fb7db3",
+          "uploadedAt": "2026-09-27T16:52:53.160Z",
+          "_id": "6ab949e500f7b60a1bf18f26"
+        },
+        {
+          "kind": "passbookOrCheque",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1790528026/sulekha/applications/SE-APP-2026-0004/adelznucy7xm1c1wh7sk.jpg",
+          "publicId": "sulekha/applications/SE-APP-2026-0004/adelznucy7xm1c1wh7sk",
+          "fileName": "checkbook.jpeg",
+          "fileSize": 44058,
+          "mimeType": "image/jpeg",
+          "extras": {
+            "accountNumber": "5678756235467",
+            "ifsc": "BKIL0000342",
+            "branchName": "SRINEKATAN",
+            "accountType": "savings"
+          },
+          "qualityCheck": {
+            "verdict": "fail",
+            "score": 55,
+            "reasons": [
+              "tooSmall",
+              "tooFewBytes"
+            ],
+            "metrics": {
+              "bytes": 44058,
+              "mimeType": "image/jpeg",
+              "decoder": null,
+              "width": 472,
+              "height": 1013,
+              "format": "jpeg",
+              "aspectRatio": 0.47
+            },
+            "checkedAt": "2026-09-27T16:53:38.831Z"
+          },
+          "review": {
+            "status": "pending"
+          },
+          "uploadedBy": "6ab7da00bd9e6e0687fb7db3",
+          "uploadedAt": "2026-09-27T16:53:50.294Z",
+          "_id": "6ab94a1e00f7b60a1bf18f31"
+        },
+        {
+          "kind": "signedQuotation",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1790560334/sulekha/applications/SE-APP-2026-0004/signed/vhcki3jfj1qht8ggpxnx.pdf",
+          "publicId": "sulekha/applications/SE-APP-2026-0004/signed/vhcki3jfj1qht8ggpxnx",
+          "fileName": "Raja Karmakar_Quotation.pdf",
+          "fileSize": 256320,
+          "mimeType": "application/pdf",
+          "extras": {
+            "accountType": null
+          },
+          "qualityCheck": {
+            "verdict": "skipped",
+            "score": 100,
+            "reasons": []
+          },
+          "review": {
+            "status": "pending"
+          },
+          "uploadedBy": "6a7ad273f91a079190f7de2d",
+          "uploadedAt": "2026-09-28T01:52:12.687Z",
+          "_id": "6ab9c84c4e6df3b0db4d751b"
+        },
+        {
+          "kind": "signedAgreement",
+          "url": "https://res.cloudinary.com/dr4mnk4tw/image/upload/v1790560356/sulekha/applications/SE-APP-2026-0004/signed/ybdyypjav3masgodssvh.pdf",
+          "publicId": "sulekha/applications/SE-APP-2026-0004/signed/ybdyypjav3masgodssvh",
+          "fileName": "Raja Karmakar_Agreement.pdf",
+          "fileSize": 908654,
+          "mimeType": "application/pdf",
+          "extras": {
+            "accountType": null
+          },
+          "qualityCheck": {
+            "verdict": "skipped",
+            "score": 100,
+            "reasons": []
+          },
+          "review": {
+            "status": "pending"
+          },
+          "uploadedBy": "6a7ad273f91a079190f7de2d",
+          "uploadedAt": "2026-09-28T01:52:33.894Z",
+          "_id": "6ab9c8614e6df3b0db4d752a"
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "draft",
+          "at": "2026-09-26T16:39:47.343Z",
+          "by": "6ab7da00bd9e6e0687fb7db3"
+        },
+        {
+          "status": "submitted",
+          "at": "2026-09-28T01:52:53.832Z",
+          "by": "6a7ad273f91a079190f7de2d",
+          "byNameSnapshot": "Sourav Bhukta"
+        }
+      ],
+      "createdAt": "2026-09-26T16:39:47.343Z",
+      "updatedAt": "2026-09-28T01:52:53.835Z",
+      "__v": 9,
+      "address": {
+        "street": "Sonar goria road",
+        "village": "Kashipur",
+        "block": "Dhaniakhali",
+        "panchayat": "Dadpur",
+        "district": "Hooghly",
+        "pincode": "765345",
+        "landmark": "Sonar goria high school"
+      },
+      "siteNotes": "Welcomes",
+      "submittedAt": "2026-09-28T01:52:53.832Z"
+    },
+    {
+      "_id": "6ab7fe977ffc29fe770b6e54",
+      "applicationNo": "SE/APP/2026/0005",
+      "agent": "6a7ad273f91a079190f7de2d",
+      "agentNameSnapshot": "Sourav Bhukta",
+      "consumerName": "ZZ NUMERIC TEST -- DELETE ME",
+      "aadhaarNumber": null,
+      "panNumber": null,
+      "phone": "9000000003",
+      "alternatePhone": null,
+      "email": null,
+      "siteType": null,
+      "deal": {
+        "systemSizeKW": 3.5,
+        "proposalAmount": 1234,
+        "quotedAmount": 98,
+        "intentionToProceed": null
+      },
+      "loan": {
+        "asked": false,
+        "hasExistingLoan": null,
+        "lenderName": null,
+        "outstandingAmount": null,
+        "monthlyEmi": null,
+        "consumerInformed": false,
+        "remark": null
+      },
+      "electricBill": {
+        "portalUrl": "https://portal.wbsedcl.in/irj/go/km/docs/bills/IFRAME/ViewBillWithoutLogin.html",
+        "verified": false
+      },
+      "nameMatch": {
+        "verdict": null,
+        "passed": null,
+        "mismatched": []
+      },
+      "status": "draft",
+      "isActive": false,
+      "createdBy": "6a7ad273f91a079190f7de2d",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "documents": [],
+      "statusHistory": [
+        {
+          "status": "draft",
+          "at": "2026-09-26T17:19:19.990Z",
+          "by": "6a7ad273f91a079190f7de2d"
+        }
+      ],
+      "createdAt": "2026-09-26T17:19:19.989Z",
+      "updatedAt": "2026-09-26T17:22:25.621Z",
+      "__v": 0,
+      "address": {
+        "street": "",
+        "village": "",
+        "block": "",
+        "panchayat": "",
+        "district": "",
+        "pincode": "",
+        "landmark": ""
+      },
+      "siteNotes": null
+    },
+    {
+      "_id": "6ab801107ffc29fe770b6e55",
+      "applicationNo": "SE/APP/2026/0006",
+      "agent": "6ab7da00bd9e6e0687fb7db3",
+      "agentNameSnapshot": "Sudip Das",
+      "consumerName": "Robin Das",
+      "aadhaarNumber": "345345347667",
+      "panNumber": "DJGPN9775S",
+      "phone": "7867345655",
+      "alternatePhone": null,
+      "email": "robin@gmail.com",
+      "siteType": null,
+      "deal": {
+        "intentionToProceed": null
+      },
+      "loan": {
+        "asked": false,
+        "hasExistingLoan": null,
+        "consumerInformed": false
+      },
+      "electricBill": {
+        "portalUrl": "https://portal.wbsedcl.in/irj/go/km/docs/bills/IFRAME/ViewBillWithoutLogin.html",
+        "verified": false
+      },
+      "nameMatch": {
+        "verdict": null,
+        "passed": null,
+        "mismatched": []
+      },
+      "status": "draft",
+      "isActive": true,
+      "createdBy": "6ab7da00bd9e6e0687fb7db3",
+      "updatedBy": "6ab7da00bd9e6e0687fb7db3",
+      "documents": [],
+      "statusHistory": [
+        {
+          "status": "draft",
+          "at": "2026-09-26T17:29:52.089Z",
+          "by": "6ab7da00bd9e6e0687fb7db3"
+        }
+      ],
+      "createdAt": "2026-09-26T17:29:52.089Z",
+      "updatedAt": "2026-09-26T17:29:52.089Z",
+      "__v": 0
+    },
+    {
+      "_id": "6ab806c47ffc29fe770b6e5a",
+      "applicationNo": "SE/APP/2026/0007",
+      "agent": "6a7ad273f91a079190f7de2d",
+      "agentNameSnapshot": "Sourav Bhukta",
+      "consumerName": "ZZ RESTORE TEST -- DELETE ME",
+      "aadhaarNumber": null,
+      "panNumber": null,
+      "phone": "9000000004",
+      "alternatePhone": null,
+      "email": null,
+      "siteType": null,
+      "deal": {
+        "intentionToProceed": null
+      },
+      "loan": {
+        "asked": false,
+        "hasExistingLoan": null,
+        "consumerInformed": false
+      },
+      "electricBill": {
+        "portalUrl": "https://portal.wbsedcl.in/irj/go/km/docs/bills/IFRAME/ViewBillWithoutLogin.html",
+        "verified": false
+      },
+      "nameMatch": {
+        "verdict": null,
+        "passed": null,
+        "mismatched": []
+      },
+      "status": "draft",
+      "isActive": false,
+      "createdBy": "6a7ad273f91a079190f7de2d",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "documents": [],
+      "statusHistory": [
+        {
+          "status": "draft",
+          "at": "2026-09-26T17:54:12.011Z",
+          "by": "6a7ad273f91a079190f7de2d"
+        }
+      ],
+      "createdAt": "2026-09-26T17:54:12.011Z",
+      "updatedAt": "2026-09-26T17:55:46.497Z",
+      "__v": 0,
+      "address": {
+        "street": "",
+        "village": "",
+        "block": "",
+        "panchayat": "",
+        "district": "",
+        "pincode": "",
+        "landmark": ""
+      },
+      "siteNotes": null
+    },
+    {
+      "_id": "6ab807bc7ffc29fe770b6e5d",
+      "applicationNo": "SE/APP/2026/0008",
+      "agent": "6a7ad273f91a079190f7de2d",
+      "agentNameSnapshot": "Sourav Bhukta",
+      "consumerName": "ZZ DOCEDIT TEST -- DELETE ME",
+      "phone": "9000000005",
+      "siteType": null,
+      "deal": {
+        "intentionToProceed": null
+      },
+      "loan": {
+        "asked": false,
+        "hasExistingLoan": null,
+        "consumerInformed": false
+      },
+      "electricBill": {
+        "portalUrl": "https://portal.wbsedcl.in/irj/go/km/docs/bills/IFRAME/ViewBillWithoutLogin.html",
+        "verified": false
+      },
+      "nameMatch": {
+        "verdict": null,
+        "passed": null,
+        "mismatched": []
+      },
+      "status": "draft",
+      "isActive": false,
+      "createdBy": "6a7ad273f91a079190f7de2d",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "documents": [],
+      "statusHistory": [
+        {
+          "status": "draft",
+          "at": "2026-09-26T17:58:20.071Z",
+          "by": "6a7ad273f91a079190f7de2d"
+        }
+      ],
+      "createdAt": "2026-09-26T17:58:20.071Z",
+      "updatedAt": "2026-09-26T18:00:08.353Z",
+      "__v": 4
+    },
+    {
+      "_id": "6abdf59b7c87826b6d63c016",
+      "applicationNo": "SE/APP/2026/0009",
+      "agent": "6abdce7e6b4716084a157da6",
+      "agentNameSnapshot": "Sdsdds",
+      "consumerName": "Samaresh Bhukta",
+      "aadhaarNumber": "656300577256",
+      "panNumber": "DJGPB9758A",
+      "phone": "9775206803",
+      "alternatePhone": null,
+      "email": "souravbhukta02@gmail.com",
+      "siteType": "rcc_rooftop",
+      "deal": {
+        "systemSizeKW": 3,
+        "proposalAmount": 220000,
+        "quotedAmount": 220000,
+        "intentionToProceed": "yes"
+      },
+      "loan": {
+        "asked": true,
+        "hasExistingLoan": false,
+        "lenderName": null,
+        "outstandingAmount": null,
+        "monthlyEmi": null,
+        "consumerInformed": true,
+        "remark": "No Loan"
+      },
+      "creditCheck": {
+        "bank": "SBI",
+        "method": "agent_estimate",
+        "score": 700,
+        "defaultOrWriteOff": false,
+        "newToCredit": false,
+        "status": "pass",
+        "headline": "700 meets State Bank of India's minimum of 650 for a ₹2,20,000 loan.",
+        "detail": "PAN mandatory, net annual income ₹3 lakh or more.",
+        "checkedAt": "2026-10-01T05:57:59.320Z",
+        "checkedBy": "6abdce7e6b4716084a157da6",
+        "note": null
+      },
+      "electricBill": {
+        "portalUrl": "https://portal.wbsedcl.in/irj/go/km/docs/bills/IFRAME/ViewBillWithoutLogin.html",
+        "verified": false
+      },
+      "nameMatch": {
+        "verdict": null,
+        "passed": null,
+        "mismatched": []
+      },
+      "status": "draft",
+      "isActive": true,
+      "createdBy": "6abdce7e6b4716084a157da6",
+      "updatedBy": "6abdce7e6b4716084a157da6",
+      "documents": [],
+      "statusHistory": [
+        {
+          "status": "draft",
+          "at": "2026-10-01T05:54:35.184Z",
+          "by": "6abdce7e6b4716084a157da6"
+        }
+      ],
+      "createdAt": "2026-10-01T05:54:35.184Z",
+      "updatedAt": "2026-10-01T05:57:59.321Z",
+      "__v": 0,
+      "address": {
+        "street": "Sonar goria",
+        "village": "Sonar Goria",
+        "block": "Jamalpur",
+        "panchayat": "Chakdighi",
+        "district": "Purba Bardhaman",
+        "pincode": "713404",
+        "landmark": "Sonar goria high school"
+      },
+      "siteNotes": null
+    },
+    {
+      "_id": "6add664ebb4e2a41278a188f",
+      "applicationNo": "SE/APP/2026/0013",
+      "agent": "6ab7da00bd9e6e0687fb7db3",
+      "agentNameSnapshot": "Sudip Das",
+      "consumerName": "VERIFY Customer 1792894532837",
+      "aadhaarNumber": "123456789012",
+      "phone": "9000000001",
+      "address": {
+        "village": "Testpara",
+        "district": "Purba Bardhaman",
+        "city": "Burdwan",
+        "state": "West Bengal",
+        "pincode": "713101",
+        "fullAddress": "Verify Road, Test Para"
+      },
+      "siteType": null,
+      "deal": {
+        "systemSizeKW": 3,
+        "intentionToProceed": null
+      },
+      "loan": {
+        "asked": false,
+        "hasExistingLoan": null,
+        "consumerInformed": false
+      },
+      "creditCheck": {
+        "method": "consumer_self_check",
+        "score": null,
+        "defaultOrWriteOff": false,
+        "newToCredit": false,
+        "status": "not_checked"
+      },
+      "documents": [
+        {
+          "kind": "aadhaar",
+          "url": "https://example.test/aadhaar.jpg",
+          "fileName": "aadhaar.jpg",
+          "fileSize": 1234,
+          "extras": {
+            "accountType": null
+          },
+          "qualityCheck": {
+            "verdict": "skipped",
+            "reasons": []
+          },
+          "review": {
+            "status": "pending"
+          },
+          "uploadedAt": "2026-10-25T02:15:39.850Z",
+          "_id": "6add664ebb4e2a41278a1890"
+        }
+      ],
+      "electricBill": {
+        "portalUrl": "https://portal.wbsedcl.in/irj/go/km/docs/bills/IFRAME/ViewBillWithoutLogin.html",
+        "verified": false
+      },
+      "nameMatch": {
+        "verdict": null,
+        "passed": null,
+        "mismatched": []
+      },
+      "status": "draft",
+      "customer": "6add664bbb4e2a41278a188d",
+      "isActive": true,
+      "createdBy": "6a7ad273f91a079190f7de2d",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "statusHistory": [
+        {
+          "status": "draft",
+          "at": "2026-10-25T02:15:42.440Z",
+          "by": "6a7ad273f91a079190f7de2d"
+        }
+      ],
+      "createdAt": "2026-10-25T02:15:42.440Z",
+      "updatedAt": "2026-10-25T02:15:42.440Z",
+      "__v": 0
+    }
+  ]
+}

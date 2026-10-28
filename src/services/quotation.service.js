@@ -71,8 +71,13 @@ const CREATABLE_FIELDS = [
   'systemSizeKW', 'panelWp', 'panelQty', 'panelBrand', 'inverterCapacityKW', 'inverterBrand',
   'structureType', 'systemOverview',
   'items', 'amount', 'amountIncludesGST', 'amountInWords',
-  // 'terms' and 'paymentTerms' are fixed company-wide and are never written by
-  // a client - they are copied from the CompanyProfile at creation time.
+  /*
+   * `terms` / `paymentTerms` default to the company's wording but are writable:
+   * a sheet occasionally has to carry a clause the standard block does not
+   * (an extra AMC year, a partner's split). Empty lines are dropped and each
+   * line is capped, so a stray blank cannot print as an empty bullet.
+   */
+  'terms', 'paymentTerms',
   'issueDate', 'validUntil', 'validityDays', 'status', 'notes',
   'schemeCode', 'schemeLabel', 'quotationType',
 ];
@@ -91,6 +96,37 @@ const pickCreatable = (payload = {}) => {
     if (payload[field] !== undefined) out[field] = payload[field];
   }
   return out;
+};
+
+/**
+ * Terms the client sent, or null when nothing usable came with the request.
+ *
+ * `null` — not `[]` — is what keeps the company default in play: an empty array
+ * means "this sheet has no terms", which would print a quotation with an empty
+ * terms block, and nobody means that.
+ */
+const normaliseTerms = (value) => {
+  if (!Array.isArray(value)) return null;
+
+  const terms = value
+    .map((entry) => ({
+      label: entry?.label ? String(entry.label).trim().slice(0, 60) : null,
+      text: String(entry?.text ?? '').trim().slice(0, 300),
+    }))
+    .filter((entry) => entry.text.length > 0);
+
+  return terms.length > 0 ? terms : null;
+};
+
+/** The same for the payment-term lines, which carry no label and cap at 200. */
+const normalisePaymentTerms = (value) => {
+  if (!Array.isArray(value)) return null;
+
+  const terms = value
+    .map((entry) => ({ text: String(entry?.text ?? '').trim().slice(0, 200) }))
+    .filter((entry) => entry.text.length > 0);
+
+  return terms.length > 0 ? terms : null;
 };
 
 /** Normalise BOQ lines: quantity, integer order, trimmed description. */
@@ -509,10 +545,17 @@ export const quotationService = {
       withCustomer.amount !== undefined
         ? withCustomer.amount
         : this.sumItemAmounts(items);
-    // Fixed company-wide terms for this sheet, copied onto the quotation so a
-    // reprint shows the wording that applied on the day it was issued.
-    const terms = buildDefaultTerms(profile, quotationType);
-    const paymentTerms = buildDefaultPaymentTerms(profile, quotationType);
+    /*
+     * Terms: this sheet's own wording if the office edited it, otherwise the
+     * company's — copied onto the quotation so a reprint shows what applied on
+     * the day it was issued. The default used to be the only possibility, which
+     * meant a one-off clause (extra AMC year, different GST note, a partner's
+     * payment split) could not be written at all.
+     */
+    const terms = normaliseTerms(withCustomer.terms) ?? buildDefaultTerms(profile, quotationType);
+    const paymentTerms =
+      normalisePaymentTerms(withCustomer.paymentTerms) ??
+      buildDefaultPaymentTerms(profile, quotationType);
 
     const systemOverview =
       withCustomer.systemOverview ||
@@ -872,13 +915,26 @@ export const quotationService = {
     delete input.schemeLabel;
 
     /*
+     * Terms may be edited line by line, so they are trimmed and stripped of
+     * blanks before they reach the document — a whitespace-only line would print
+     * as an empty bullet. An emptied list falls back to what is already on the
+     * quotation rather than wiping the block.
+     */
+    if (input.terms !== undefined) {
+      input.terms = normaliseTerms(input.terms) ?? quotation.terms;
+    }
+    if (input.paymentTerms !== undefined) {
+      input.paymentTerms = normalisePaymentTerms(input.paymentTerms) ?? quotation.paymentTerms;
+    }
+
+    /*
      * The sheet itself may be corrected before anything is printed - a domestic
      * quotation that turns out to be a partner order, or the reverse.
      *
-     * Terms and payment terms are never written by a client: they are fixed
-     * company-wide per sheet, so switching type re-copies them from the profile
-     * exactly the way creation does. The BOQ lines are left untouched; the
-     * caller is editing those in the same request when they need to.
+     * Switching type re-copies the terms from the profile exactly the way
+     * creation does: the edited wording belonged to the old sheet. The BOQ lines
+     * are left untouched; the caller is editing those in the same request when
+     * they need to.
      */
     const typeChanged = Boolean(input.quotationType) && input.quotationType !== quotation.quotationType;
     const effectiveType = input.quotationType || quotation.quotationType;

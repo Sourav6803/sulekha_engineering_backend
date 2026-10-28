@@ -140,6 +140,60 @@ export const notificationService = {
   },
 
   /**
+   * The signed-copy loop's second half.
+   *
+   * Two notices use this, and both are addressed mail: an agent filing a signed
+   * copy has to reach every office user who can accept it, and the office's
+   * verdict has to reach the one agent who filed it. Leaving `recipient` unset
+   * would put an agent's upload in every agent's bell and the office's verdict in
+   * all of them — the same mistake the signed-copy notice avoids.
+   *
+   * @param {Object} args
+   * @param {Object} args.application - The application the document belongs to.
+   * @param {String} args.recipient - The user id this notice is addressed to.
+   * @param {Object} args.notice - Copy from `data/signedCopyReviewNotice.js`.
+   * @param {Object} [args.extra] - Extra metadata for the client to route on.
+   * @returns {Promise<Object>} The stored notification.
+   */
+  async createDocumentNoticeNotification({ application, recipient, notice, extra = {} }) {
+    const metadata = Object.fromEntries(
+      Object.entries({
+        applicationId: String(application._id),
+        applicationNo: application.applicationNo,
+        consumerName: application.consumerName,
+        kind: notice.kind,
+        verdict: notice.verdict,
+        ...extra,
+      }).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    );
+
+    const created = await Notification.create({
+      type: 'document',
+      source: 'internal',
+      recipient,
+      title: notice.title,
+      message: notice.message,
+      link: `/applications/${application._id}`,
+      category: notice.category || 'info',
+      priority: notice.priority || 'medium',
+      isExternal: false,
+      metadata,
+    });
+
+    // Same reason as the signed-copy notice: the list endpoints cache for an
+    // hour, so without this the bell would not ring until the cache aged out.
+    await redisDel('notifications:list:*');
+    await redisDel('notifications:unified:*');
+
+    logger.info(
+      { applicationNo: application.applicationNo, kind: notice.kind, recipient: String(recipient) },
+      'Signed-copy review notification created'
+    );
+
+    return created;
+  },
+
+  /**
    * Tell one office user that a field agent has filed an application — either
    * opened a draft on it or submitted it.
    *

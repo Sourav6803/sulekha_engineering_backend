@@ -88,6 +88,18 @@ const ApplicationDocumentSchema = new Schema(
       reason: { type: String, trim: true },
     },
 
+    /**
+     * The signed paper, as the person who filed it tells it.
+     *
+     * The field agent is now allowed to file the consumer-signed copy (they are
+     * the one standing in the house, and the office can be 100 km away), so the
+     * date the consumer actually signed — and a free note about it — is recorded
+     * with the file. The office accepts the scan on the strength of this, and a
+     * later dispute has something to read besides the image.
+     */
+    signedOn: { type: Date, default: null },
+    note: { type: String, trim: true, maxlength: 300, default: '' },
+
     uploadedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     uploadedAt: { type: Date, default: Date.now },
   },

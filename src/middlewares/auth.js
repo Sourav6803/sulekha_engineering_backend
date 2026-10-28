@@ -4,6 +4,7 @@ import config from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
 import logger from '../utils/logger.js';
 import { User } from '../models/index.js';
+import { isInstallationCrew, permissionsForUser } from '../data/rolePermissions.js';
 
 /**
  * Extract JWT token from Authorization header
@@ -117,7 +118,15 @@ export const authorize = (...roles) => {
         throw new ApiError(401, 'Authentication required');
       }
 
-      if (!roles.includes(req.user.role)) {
+      /*
+       * Read the department, not just the role. An installer account created before
+       * `installation_team` existed is `role: 'agent'` + `department: 'installation'`,
+       * so a plain role comparison locked the crew out of the evidence endpoints
+       * while the roster said they were installers.
+       */
+      const role = isInstallationCrew(req.user) ? 'installation_team' : req.user.role;
+
+      if (!roles.includes(role)) {
         throw new ApiError(403, `Access denied. Required roles: ${roles.join(', ')}`);
       }
 
@@ -143,7 +152,17 @@ export const hasPermission = (permission) => {
         return next();
       }
 
-      if (!req.user.permissions || !req.user.permissions.includes(permission)) {
+      /*
+       * An explicit grant on the user wins; otherwise the role's own floor applies.
+       *
+       * Only `user.permissions` used to be read, and nothing ever wrote it — so
+       * every non-admin was refused on installations, materials, purchases and
+       * BOM. That is why the installation crew could not open a job they had been
+       * sent to, while the admin who could see nothing wrong sat in the office.
+       */
+      const granted = permissionsForUser(req.user);
+
+      if (!granted.includes('*') && !granted.includes(permission)) {
         throw new ApiError(403, `Access denied. Required permission: ${permission}`);
       }
 

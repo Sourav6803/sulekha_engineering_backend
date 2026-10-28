@@ -14,19 +14,34 @@ const materialStatus = Joi.string().valid('reserved', 'installed', 'reversed');
 const roofType = Joi.string().valid('rcc_rooftop', 'tin_shed', 'ground_mount');
 
 export const createInstallationValidation = Joi.object({
-  customer: Joi.string().hex().length(24).required().messages({
-    'any.required': 'Customer is required',
-  }),
+  /*
+   * `application` is the normal way in now. When it is present the server reads
+   * the customer, the system size, the roof type and the quotation number from
+   * the application, so those fields stop being required on the request — and
+   * whatever is sent for them is ignored rather than trusted.
+   */
+  application: Joi.string().hex().length(24),
+  customer: Joi.string()
+    .hex()
+    .length(24)
+    .when('application', { is: Joi.exist(), then: Joi.optional(), otherwise: Joi.required() })
+    .messages({
+      'any.required': 'Customer is required',
+    }),
   projectNo: Joi.string().max(50),
   quotationNo: Joi.string().max(50),
   systemSizeKW: Joi.number()
-    .required()
     .min(0.1)
+    .when('application', { is: Joi.exist(), then: Joi.optional(), otherwise: Joi.required() })
     .messages({
       'number.min': 'System size must be at least 0.1 kW',
       'any.required': 'System size is required',
     }),
-  roofType: roofType.required().messages({
+  roofType: roofType.when('application', {
+    is: Joi.exist(),
+    then: Joi.optional(),
+    otherwise: Joi.required(),
+  }).messages({
     'any.required': 'Roof type is required',
   }),
   orderDate: Joi.date(),

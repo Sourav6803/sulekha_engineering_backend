@@ -5,7 +5,7 @@ import { DEFAULT_DISCOM } from '../data/agreementContent.js';
 
 const { Schema } = mongoose;
 
-/** One milestone of the 50 / 40 / 10 payment schedule, frozen at save time. */
+/** One milestone of the 70 / 20 / 10 payment schedule, frozen at save time. */
 const paymentStageSchema = new Schema(
   {
     label: { type: String, trim: true, maxlength: 10 },
@@ -78,7 +78,7 @@ const AgreementSchema = new Schema(
       min: [0, 'Amount cannot be negative'],
       max: [100000000, 'Amount looks wrong'],
     },
-    /** 50 / 40 / 10 of `amount`, stored so a reprint never recalculates differently. */
+    /** 70 / 20 / 10 of `amount`, stored so a reprint never recalculates differently. */
     paymentSchedule: { type: [paymentStageSchema], default: [] },
 
     // ---- links ----

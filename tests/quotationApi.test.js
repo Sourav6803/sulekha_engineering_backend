@@ -274,7 +274,7 @@ test('create: the BOQ template is pre-filled and sized from the system', async (
   assert.equal(res.body.data.paymentTerms.length, 1);
 });
 
-test('terms: a client cannot override the fixed terms or payment terms', async () => {
+test('terms: a sheet can carry its own wording over the company default', async () => {
   const res = await createQuotation({
     terms: [{ text: 'Our own special term' }],
     paymentTerms: [{ text: '100% cash upfront' }],
@@ -282,31 +282,30 @@ test('terms: a client cannot override the fixed terms or payment terms', async (
 
   assert.equal(res.status, 201, JSON.stringify(res.body));
 
-  // the fixed company wording won, in the stored copy and on the document
-  assert.equal(res.body.data.terms.length, 8);
+  // The sheet's own wording wins, in the stored copy and on the document.
+  assert.equal(res.body.data.terms.length, 1);
+  assert.equal(res.body.data.terms[0].text, 'Our own special term');
   assert.equal(res.body.data.paymentTerms.length, 1);
-  assert.ok(res.body.data.terms.every((term) => !term.text.includes('Our own special term')));
-  assert.equal(res.body.data.paymentTerms[0].text.includes('100% cash upfront'), false);
+  assert.equal(res.body.data.paymentTerms[0].text, '100% cash upfront');
 
   const print = await asAdmin(request(env.app).get(`${base}/${res.body.data._id}/print`));
-  assert.doesNotMatch(print.text, /Our own special term/);
-  assert.match(print.text, /No warranty on physical damage\./);
+  assert.match(print.text, /Our own special term/);
 });
 
-test('terms: an update cannot change them either', async () => {
+test('terms: an update replaces the wording on the sheet', async () => {
   const created = await createQuotation();
   const id = created.body.data._id;
 
   const res = await asAdmin(request(env.app).put(`${base}/${id}`)).send({
     notes: 'legitimate change',
-    terms: [{ text: 'replaced' }],
-    paymentTerms: [{ text: 'replaced' }],
+    terms: [{ text: 'replaced term' }],
+    paymentTerms: [{ text: 'replaced payment term' }],
   });
 
   assert.equal(res.status, 200);
-  assert.equal(res.body.data.quotation.terms.length, 8);
-  assert.equal(res.body.data.quotation.paymentTerms.length, 1);
-  assert.match(res.body.data.quotation.paymentTerms[0].text, /50% advance with order/);
+  assert.equal(res.body.data.quotation.terms.length, 1);
+  assert.equal(res.body.data.quotation.terms[0].text, 'replaced term');
+  assert.equal(res.body.data.quotation.paymentTerms[0].text, 'replaced payment term');
 });
 
 test('terms: a register-only record still prints the fixed terms', async () => {

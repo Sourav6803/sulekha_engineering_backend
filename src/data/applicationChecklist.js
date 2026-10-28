@@ -103,6 +103,107 @@ export const CHECKLIST_DOCUMENTS = [
     required: true,
     extras: ['accountNumber', 'ifsc', 'branchName', 'accountType'],
   },
+  /*
+   * The office's paper trail for the scheme.
+   *
+   * These arrive from outside — the DISCOM, the lender, the portal — and only the
+   * office ever has them, which is why they are office-filed: an agent cannot
+   * upload what nobody has handed them. None is required to *save* an application;
+   * they are required to run the job, and the checklist shows what is still
+   * missing without blocking the field.
+   */
+  {
+    kind: 'feasibilityReport',
+    label: 'Feasibility report',
+    labelBn: 'ফিজিবিলিটি রিপোর্ট',
+    hint: 'The feasibility report for this site.',
+    hintBn: 'এই সাইটের ফিজিবিলিটি রিপোর্ট',
+    required: false,
+    filedBy: 'office',
+  },
+  {
+    kind: 'rtsReport',
+    label: 'RTS report',
+    labelBn: 'আরটিএস রিপোর্ট',
+    hint: 'The rooftop-solar report generated for this application.',
+    hintBn: 'এই আবেদনের আরটিএস রিপোর্ট',
+    required: false,
+    filedBy: 'office',
+  },
+  {
+    kind: 'loanLetter',
+    label: 'Loan sanction letter',
+    labelBn: 'ঋণ মঞ্জুরিপত্র',
+    hint: 'The bank\u2019s sanction letter, when the consumer is borrowing.',
+    hintBn: 'গ্রাহক ঋণ নিলে ব্যাঙ্কের মঞ্জুরিপত্র',
+    required: false,
+    filedBy: 'office',
+  },
+  {
+    kind: 'dcrCertificate',
+    label: 'DCR certificate',
+    labelBn: 'ডিসিআর সার্টিফিকেট',
+    hint: 'Domestic content certificate for the modules that were supplied.',
+    hintBn: 'সরবরাহ করা মডিউলের ডিসিআর সার্টিফিকেট',
+    required: false,
+    filedBy: 'office',
+  },
+  {
+    kind: 'etoken',
+    label: 'eToken',
+    labelBn: 'ইটোকেন',
+    hint: 'The eToken receipt from the national portal.',
+    hintBn: 'পোর্টালের ইটোকেন রসিদ',
+    required: false,
+    filedBy: 'office',
+  },
+  {
+    kind: 'netMeteringAgreement',
+    label: 'Net metering agreement',
+    labelBn: 'নেট মিটারিং চুক্তি',
+    hint: 'The signed net-metering agreement with the DISCOM.',
+    hintBn: 'ডিসকমের সঙ্গে স্বাক্ষরিত নেট মিটারিং চুক্তি',
+    required: false,
+    filedBy: 'office',
+  },
+  {
+    kind: 'acknowledgement',
+    label: 'Acknowledgement',
+    labelBn: 'স্বীকৃতিপত্র',
+    hint: 'The acknowledgement slip from the portal or the DISCOM.',
+    hintBn: 'পোর্টাল বা ডিসকমের স্বীকৃতিপত্র',
+    required: false,
+    filedBy: 'office',
+  },
+
+  /*
+   * The unsigned documents, as issued from the application.
+   *
+   * These are not uploaded by anybody: the office presses "Issue quotation" /
+   * "Issue agreement", the server builds the record from this application,
+   * renders the PDF and files it here — so the paper the agent prints and the
+   * record in the register are the same document, and the agent can download it
+   * without access to the quotations module. Kept separate from the signed kinds
+   * below, which are scans of paper that came back.
+   */
+  {
+    kind: 'issuedQuotation',
+    label: 'Quotation (issued)',
+    labelBn: 'ইস্যু করা কোটেশন',
+    hint: 'The unsigned quotation generated from this application.',
+    hintBn: 'স্বাক্ষরের আগে ইস্যু করা কোটেশন',
+    required: false,
+    filedBy: 'office',
+  },
+  {
+    kind: 'issuedAgreement',
+    label: 'Agreement (issued)',
+    labelBn: 'ইস্যু করা চুক্তিপত্র',
+    hint: 'The unsigned agreement generated from this application.',
+    hintBn: 'স্বাক্ষরের আগে ইস্যু করা চুক্তিপত্র',
+    required: false,
+    filedBy: 'office',
+  },
   {
     kind: 'signedQuotation',
     label: 'Signed quotation',

@@ -91,20 +91,20 @@ test('money: the total has no decimals when whole, the split always has two', ()
   assert.equal(formatRupeeSplit(17600), '17600.00');
 });
 
-test('split: 176000 becomes 88000.00 / 70400.00 / 17600.00', () => {
+test('split: 176000 becomes 123200.00 / 35200.00 / 17600.00 (70/20/10)', () => {
   const schedule = buildPaymentSchedule(176000);
 
   assert.equal(schedule.length, 3);
   assert.deepEqual(
     schedule.map((stage) => stage.percent),
-    [50, 40, 10]
+    [70, 20, 10]
   );
   assert.deepEqual(
     schedule.map((stage) => stage.amountText),
-    ['88000.00', '70400.00', '17600.00']
+    ['123200.00', '35200.00', '17600.00']
   );
   assert.equal(schedule[0].label, 'a)');
-  assert.match(schedule[0].note, /An advance payment of 50% of the total project value/);
+  assert.match(schedule[0].note, /An advance payment of 70% of the total project value/);
   assert.match(schedule[1].note, /prior to dispatch of materials/);
   assert.match(schedule[2].note, /testing and commissioning of the solar PV system/);
 });
@@ -154,12 +154,12 @@ test('html: page 1 carries the consumer name, consumer id, discom and address', 
   assert.match(html, /registered office at Uttarsura, Surekalna, Jamalpur, Purba Bardhaman, West Bengal-713408/);
 });
 
-test('html: page 4 carries the amount and the 50/40/10 split', () => {
+test('html: page 4 carries the amount and the 70/20/10 split', () => {
   const html = buildAgreementHTML(fullAgreement());
 
   assert.match(html, /The cost of RTS system will be Rs\.176000\/\(to be decided mutually\)/);
-  assert.match(html, /50%\(Rs\. 88000\.00\)/);
-  assert.match(html, /40%\(Rs\. 70400\.00\)/);
+  assert.match(html, /70%\(Rs\. 123200\.00\)/);
+  assert.match(html, /20%\(Rs\. 35200\.00\)/);
   assert.match(html, /10%\(Rs\. 17600\.00\)/);
 });
 
@@ -313,7 +313,7 @@ test('api: defaults feed the form the fixed wording', async () => {
   assert.equal(res.body.data.paymentStages.length, 3);
   assert.deepEqual(
     res.body.data.paymentStages.map((stage) => stage.percent),
-    [50, 40, 10]
+    [70, 20, 10]
   );
 });
 
@@ -330,7 +330,7 @@ test('api: create stores the agreement and builds its own payment schedule', asy
   assert.equal(res.status, 201, JSON.stringify(res.body));
   assert.equal(res.body.data.consumerName, 'Aparna Pramanik');
   assert.equal(res.body.data.paymentSchedule.length, 3);
-  assert.equal(res.body.data.paymentSchedule[0].amountText, '88000.00');
+  assert.equal(res.body.data.paymentSchedule[0].amountText, '123200.00');
   assert.equal(res.body.data.paymentSchedule[2].amountText, '17600.00');
   assert.equal(res.body.data.discom, 'WBSEDCL');
   assert.equal(res.body.data.companySnapshot.registeredOffice, DEFAULT_REGISTERED_OFFICE);
@@ -365,10 +365,10 @@ test('api: a quotation can prefill the consumer details and the amount', async (
   assert.equal(res.body.data.quotationNo, 'SE/PMSGY/2026-27/1');
   assert.equal(res.body.data.address, 'Birpur, Gurap, Hooghly, Pin- 712303');
 
-  // 50 / 40 / 10 of the quotation amount
+  // 70 / 20 / 10 of the quotation amount
   assert.deepEqual(
     res.body.data.paymentSchedule.map((stage) => stage.amountText),
-    ['97500.00', '78000.00', '19500.00']
+    ['136500.00', '39000.00', '19500.00']
   );
 });
 
@@ -391,8 +391,8 @@ test('api: the amount can be overridden after pulling it from a quotation', asyn
 
   assert.equal(res.status, 201, JSON.stringify(res.body));
   assert.equal(res.body.data.amount, 240000);
-  assert.equal(res.body.data.paymentSchedule[0].amountText, '120000.00');
-  assert.equal(res.body.data.paymentSchedule[1].amountText, '96000.00');
+  assert.equal(res.body.data.paymentSchedule[0].amountText, '168000.00');
+  assert.equal(res.body.data.paymentSchedule[1].amountText, '48000.00');
   assert.equal(res.body.data.paymentSchedule[2].amountText, '24000.00');
 });
 
@@ -412,7 +412,7 @@ test('api: updating the amount rebuilds the split', async () => {
   assert.equal(res.body.data.agreement.amount, 200000);
   assert.deepEqual(
     res.body.data.agreement.paymentSchedule.map((stage) => stage.amountText),
-    ['100000.00', '80000.00', '20000.00']
+    ['140000.00', '40000.00', '20000.00']
   );
   assert.ok(res.body.data.changedFields.includes('amount'));
 });

@@ -8,6 +8,7 @@ import {
   BILL_PORTAL_URL,
 } from '../data/applicationChecklist.js';
 import { LENDERS, SCHEME_WIDE_RULES, SCORE_MAX, LOAN_SLAB_LIMIT } from '../data/lenderCriteria.js';
+import { issueDocumentsService } from '../services/issueDocuments.service.js';
 
 /**
  * Application controller — thin HTTP layer over applicationService.
@@ -227,6 +228,26 @@ export const uploadSignedDocument = async (req, res) => {
   return ApiResponse.sendCreated(res, document, 'Signed copy attached');
 };
 
+/**
+ * POST /api/v1/applications/:id/issue-quotation
+ * Build the quotation from this application, render it, and file the PDF on it.
+ */
+export const issueQuotation = async (req, res) => {
+  const result = await issueDocumentsService.issueQuotation(req.params.id, req.body, req.user);
+
+  return ApiResponse.sendCreated(res, result, `Quotation issued: ${result.quotationNo}`);
+};
+
+/**
+ * POST /api/v1/applications/:id/issue-agreement
+ * The same, for the agreement — from the linked quotation when there is one.
+ */
+export const issueAgreement = async (req, res) => {
+  const result = await issueDocumentsService.issueAgreement(req.params.id, req.body, req.user);
+
+  return ApiResponse.sendCreated(res, result, 'Agreement issued');
+};
+
 /** DELETE /api/v1/applications/:id */
 export const deleteApplication = async (req, res) => {
   const result = await applicationService.deleteApplication(req.params.id, req.user);
@@ -252,5 +273,7 @@ export default {
   reviewApplication,
   updateStatus,
   uploadSignedDocument,
+  issueQuotation,
+  issueAgreement,
   deleteApplication,
 };

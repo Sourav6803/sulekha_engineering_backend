@@ -52,18 +52,27 @@ test('create: hard ceilings on lines and text blocks', () => {
 
 });
 
-test('create: terms and payment terms cannot be set per quotation (fixed company-wide)', () => {
+test('create: terms and payment terms are part of the contract, and capped', () => {
   const payload = run(schemas.createQuotationValidation, {
     systemSizeKW: 3,
     terms: Array.from({ length: 13 }, (_, i) => ({ text: `term ${i}` })),
     paymentTerms: Array.from({ length: 4 }, (_, i) => ({ text: `payment ${i}` })),
   });
 
-  // Not an error: the fields are simply outside the contract and get stripped,
-  // so the service always applies the CompanyProfile wording.
+  // Editable per sheet: a quotation can carry a clause the company block does
+  // not, so the fields survive validation instead of being stripped.
   assert.equal(payload.error, undefined);
-  assert.equal(payload.value.terms, undefined);
-  assert.equal(payload.value.paymentTerms, undefined);
+  assert.equal(payload.value.terms.length, 13);
+  assert.equal(payload.value.paymentTerms.length, 4);
+});
+
+test('create: an unreasonable number of term lines is refused', () => {
+  const { error } = run(schemas.createQuotationValidation, {
+    systemSizeKW: 3,
+    terms: Array.from({ length: 41 }, (_, i) => ({ text: `term ${i}` })),
+  });
+
+  assert.ok(error, 'a 41-line terms block was accepted');
 });
 
 test('create: a quotation date far in the future is rejected', () => {

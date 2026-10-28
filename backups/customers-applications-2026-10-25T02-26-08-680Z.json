@@ -1,0 +1,134 @@
+{
+  "takenAt": "2026-10-25T02:26:08.680Z",
+  "counts": {
+    "customers": 1,
+    "applications": 1,
+    "installations": 5,
+    "quotations": 61,
+    "agreements": 3
+  },
+  "customers": [
+    {
+      "_id": "6add6818808b8a16f9291999",
+      "customerId": "SE-0015",
+      "name": "Ramesh Mondal",
+      "phone": "9832117393",
+      "alternatePhone": "7083799437",
+      "address": "Shurikola, Jamalpur",
+      "village": "Shurikola",
+      "block": "Jamalpur",
+      "district": "Purba Bardhaman",
+      "city": "Burdwan",
+      "state": "West Bengal",
+      "pincode": "713408",
+      "systemSizeKW": 3,
+      "roofType": "rcc_rooftop",
+      "roofArea": 320,
+      "aadhaarNumber": "432109876543",
+      "panNumber": "ABCDE1234F",
+      "preferredTimeSlot": "anytime",
+      "status": "active",
+      "isActive": true,
+      "createdBy": "6ab7da00bd9e6e0687fb7db3",
+      "ownerAgent": "6ab7da00bd9e6e0687fb7db3",
+      "updatedBy": "6ab7da00bd9e6e0687fb7db3",
+      "documents": [
+        {
+          "type": "sitePhotoBefore",
+          "url": "https://res.cloudinary.com/demo/image/upload/roof.jpg",
+          "fileName": "roof-photo.jpg",
+          "fileSize": 284311,
+          "fileType": "image/jpeg",
+          "uploadedAt": "2026-10-25T02:23:21.427Z",
+          "_id": "6add6819808b8a16f929199a"
+        }
+      ],
+      "createdAt": "2026-10-25T02:23:20.601Z",
+      "updatedAt": "2026-10-25T02:23:21.427Z",
+      "__v": 0
+    }
+  ],
+  "applications": [
+    {
+      "_id": "6add681c808b8a16f929199b",
+      "applicationNo": "SE/APP/2026/0014",
+      "agent": "6ab7da00bd9e6e0687fb7db3",
+      "agentNameSnapshot": "Sudip Das",
+      "consumerName": "Ramesh Mondal",
+      "aadhaarNumber": "432109876543",
+      "panNumber": "ABCDE1234F",
+      "phone": "9832117393",
+      "alternatePhone": "7083799437",
+      "address": {
+        "village": "Shurikola",
+        "block": "Jamalpur",
+        "district": "Purba Bardhaman",
+        "city": "Burdwan",
+        "state": "West Bengal",
+        "pincode": "713408",
+        "fullAddress": "Shurikola, Jamalpur"
+      },
+      "siteType": null,
+      "deal": {
+        "systemSizeKW": 3,
+        "intentionToProceed": null
+      },
+      "loan": {
+        "asked": false,
+        "hasExistingLoan": null,
+        "consumerInformed": false
+      },
+      "creditCheck": {
+        "method": "consumer_self_check",
+        "score": null,
+        "defaultOrWriteOff": false,
+        "newToCredit": false,
+        "status": "not_checked"
+      },
+      "documents": [
+        {
+          "kind": "rooftopPhoto",
+          "url": "https://res.cloudinary.com/demo/image/upload/roof.jpg",
+          "fileName": "roof-photo.jpg",
+          "fileSize": 284311,
+          "extras": {
+            "accountType": null
+          },
+          "qualityCheck": {
+            "verdict": "skipped",
+            "reasons": []
+          },
+          "review": {
+            "status": "pending"
+          },
+          "uploadedAt": "2026-10-25T02:23:21.427Z",
+          "_id": "6add681c808b8a16f929199c"
+        }
+      ],
+      "electricBill": {
+        "portalUrl": "https://portal.wbsedcl.in/irj/go/km/docs/bills/IFRAME/ViewBillWithoutLogin.html",
+        "verified": false
+      },
+      "nameMatch": {
+        "verdict": null,
+        "passed": null,
+        "mismatched": []
+      },
+      "status": "draft",
+      "customer": "6add6818808b8a16f9291999",
+      "isActive": true,
+      "createdBy": "6a7ad273f91a079190f7de2d",
+      "updatedBy": "6a7ad273f91a079190f7de2d",
+      "statusHistory": [
+        {
+          "status": "draft",
+          "at": "2026-10-25T02:23:24.885Z",
+          "by": "6a7ad273f91a079190f7de2d"
+        }
+      ],
+      "createdAt": "2026-10-25T02:23:24.885Z",
+      "updatedAt": "2026-10-25T02:23:24.885Z",
+      "__v": 0
+    }
+  ]
+}

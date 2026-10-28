@@ -918,6 +918,242 @@ export const sendSignedDocumentFiledEmail = async ({ to, company, ...rest } = {}
 };
 
 /**
+ * The shared shell for the two signed-copy review mails.
+ *
+ * One builder rather than two near-copies: the office mail and the verdict mail
+ * carry the same furniture and differ only in a couple of detail rows, and two
+ * templates drifting apart is how an agent ends up reading "accepted" in the
+ * subject and "sent back" in the body.
+ */
+const composeSignedCopyNoticeEmail = ({
+  notice,
+  greetingName,
+  consumerName,
+  applicationNo,
+  applicationUrl,
+  company,
+  extraRows = [],
+} = {}) => {
+  const firstName = String(greetingName || '').trim().split(/\s+/)[0] || 'Sir';
+  const rows = [
+    detailRow('গ্রাহকের নাম', consumerName || '—'),
+    detailRow('আবেদন নম্বর', applicationNo || '—'),
+    detailRow('নথি', notice.label || 'স্বাক্ষরিত নথি'),
+    ...extraRows.filter((row) => row && row.value).map((row) => detailRow(row.label, row.value)),
+  ].join('');
+
+  const bodyHtml = `
+    <p style="margin:0 0 15px;font-size:14px;line-height:1.85;">প্রিয় ${escapeHtml(firstName)},</p>
+
+    <p style="margin:0 0 16px;font-size:14px;line-height:1.85;">${notice.emailIntro}</p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF6EC;border:1px solid #E8DCC8;border-radius:13px;">
+      <tr>
+        <td style="padding:10px 22px 14px;">
+          <div style="font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:#9A8B74;padding:8px 0 2px;">আবেদনের বিবরণ</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${rows}
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    ${ctaButton(applicationUrl, 'আবেদনটি খুলুন')}
+
+    ${stepsBlock(notice.steps)}
+
+    <p style="margin:22px 0 8px;font-size:13px;line-height:1.85;color:#7A6A56;">
+      কোনো সমস্যা হলে অফিসে জানান &mdash; ${escapeHtml(company?.phone || '')}
+    </p>
+    <p style="margin:0;font-size:12px;line-height:1.85;color:#9A8B78;">
+      বোতাম কাজ না করলে এই লিঙ্কটি খুলুন:<br />
+      <a href="${escapeHtml(applicationUrl)}" style="color:#C96F22;word-break:break-all;">${escapeHtml(applicationUrl)}</a>
+    </p>
+  `;
+
+  const text = [
+    `প্রিয় ${firstName},`,
+    '',
+    notice.emailIntroText,
+    '',
+    `গ্রাহকের নাম: ${consumerName || '-'}`,
+    `আবেদন নম্বর: ${applicationNo || '-'}`,
+    `নথি: ${notice.label || 'স্বাক্ষরিত নথি'}`,
+    ...extraRows.filter((row) => row && row.value).map((row) => `${row.label}: ${row.value}`),
+    '',
+    `আবেদনটি খুলুন: ${applicationUrl}`,
+    '',
+    'পরের কাজ:',
+    ...notice.stepsText.map((step, index) => `  ${index + 1}. ${step}`),
+    '',
+    `-- ${company?.name || ''}`,
+    (company?.addressLines || []).join(', '),
+    company?.phone ? `ফোন: ${company.phone} | ${company.email}` : '',
+    '',
+    'এটি একটি স্বয়ংক্রিয় বার্তা; উত্তর দেওয়ার প্রয়োজন নেই।',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return {
+    subject: notice.emailSubject,
+    html: layout({
+      company,
+      heading: notice.emailHeading,
+      bodyHtml,
+      preheader: String(notice.emailIntroText || '').slice(0, 140),
+    }),
+    text,
+  };
+};
+
+/**
+ * The office mail: a field agent has filed a consumer-signed copy and it is
+ * waiting for the office's verdict.
+ *
+ * Bengali, like every other notice in this flow. Split from the send so the
+ * rendered result can be asserted without an SMTP round trip.
+ */
+export const buildSignedCopyPendingEmail = ({
+  notice,
+  officeName,
+  consumerName,
+  applicationNo,
+  agentName,
+  signedOn,
+  uploadedAt,
+  applicationUrl,
+  company,
+} = {}) => {
+  const when = uploadedAt ? new Date(uploadedAt) : new Date();
+  const uploadedOn = when.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const signedOnText = signedOn
+    ? new Date(signedOn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '';
+
+  return composeSignedCopyNoticeEmail({
+    notice,
+    greetingName: officeName,
+    consumerName,
+    applicationNo,
+    applicationUrl,
+    company,
+    extraRows: [
+      { label: 'আপলোড করেছেন', value: agentName || '' },
+      { label: 'গ্রাহক সাইন করেছেন', value: signedOnText },
+      { label: 'আপলোডের তারিখ', value: uploadedOn },
+    ],
+  });
+};
+
+/** Send the "waiting for your verdict" mail to one office user. Best-effort. */
+export const sendSignedCopyPendingEmail = async ({ to, company, ...rest } = {}) => {
+  const resolvedCompany = company ?? (await getCompany());
+  const { subject, html, text } = buildSignedCopyPendingEmail({ ...rest, company: resolvedCompany });
+
+  return sendMail({
+    to,
+    subject,
+    html,
+    text,
+    attachments: logoAttachment(),
+  });
+};
+
+/**
+ * The agent mail: the office accepted the scan, or sent it back with a reason.
+ *
+ * A rejection always shows the reason — an agent told only "sent back" has to
+ * guess, and guessing here means a third visit to the consumer's house.
+ */
+export const buildSignedCopyVerdictEmail = ({
+  notice,
+  agentName,
+  consumerName,
+  applicationNo,
+  applicationUrl,
+  company,
+} = {}) => {
+  const accepted = notice?.verdict === 'accepted';
+
+  return composeSignedCopyNoticeEmail({
+    notice,
+    greetingName: agentName,
+    consumerName,
+    applicationNo,
+    applicationUrl,
+    company,
+    extraRows: [
+      { label: 'অফিসের সিদ্ধান্ত', value: accepted ? 'অনুমোদিত' : 'ফেরত পাঠানো হয়েছে' },
+      { label: 'কারণ', value: accepted ? '' : notice?.reason || '' },
+    ],
+  });
+};
+
+/** Send the verdict mail to the agent of record. Best-effort. */
+export const sendSignedCopyVerdictEmail = async ({ to, company, ...rest } = {}) => {
+  const resolvedCompany = company ?? (await getCompany());
+  const { subject, html, text } = buildSignedCopyVerdictEmail({ ...rest, company: resolvedCompany });
+
+  return sendMail({
+    to,
+    subject,
+    html,
+    text,
+    attachments: logoAttachment(),
+  });
+};
+
+/**
+ * The agent mail: the office has issued the quotation or the agreement and the
+ * printable PDF is now on the application.
+ *
+ * This is the mail that replaces "the office printed it and drove it over". The
+ * quotations module is office-only, so the link has to point at the application,
+ * where the file is attached for the agent to download.
+ */
+export const buildIssuedDocumentsEmail = ({
+  notice,
+  agentName,
+  consumerName,
+  applicationNo,
+  quotationNo,
+  agreementNo,
+  applicationUrl,
+  company,
+} = {}) =>
+  composeSignedCopyNoticeEmail({
+    notice,
+    greetingName: agentName,
+    consumerName,
+    applicationNo,
+    applicationUrl,
+    company,
+    extraRows: [
+      { label: 'কোটেশন নম্বর', value: quotationNo || '' },
+      { label: 'চুক্তিপত্র নম্বর', value: agreementNo || '' },
+    ],
+  });
+
+/** Send the "documents issued" mail to the agent of record. Best-effort. */
+export const sendIssuedDocumentsEmail = async ({ to, company, ...rest } = {}) => {
+  const resolvedCompany = company ?? (await getCompany());
+  const { subject, html, text } = buildIssuedDocumentsEmail({ ...rest, company: resolvedCompany });
+
+  return sendMail({
+    to,
+    subject,
+    html,
+    text,
+    attachments: logoAttachment(),
+  });
+};
+
+/**
  * The mail the office gets when a field agent files an application — either
  * opens a draft on one or submits a finished one.
  *
@@ -1204,6 +1440,12 @@ export default {
   sendAgentPasswordResetEmail,
   buildSignedDocumentFiledEmail,
   sendSignedDocumentFiledEmail,
+  buildSignedCopyPendingEmail,
+  sendSignedCopyPendingEmail,
+  buildSignedCopyVerdictEmail,
+  sendSignedCopyVerdictEmail,
+  buildIssuedDocumentsEmail,
+  sendIssuedDocumentsEmail,
   buildNewApplicationEmail,
   sendNewApplicationEmail,
   buildNewLeadEmail,

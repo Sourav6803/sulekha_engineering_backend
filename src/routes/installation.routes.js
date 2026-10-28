@@ -4,6 +4,7 @@ import { authenticate, authorize, hasPermission } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { pdfRateLimiter } from '../middlewares/rateLimiter.js';
+import { uploadSingleToMemory } from '../middlewares/upload.js';
 import * as installationController from '../controllers/installation.controller.js';
 import * as installationValidation from '../validations/installation.validation.js';
 
@@ -25,6 +26,85 @@ router.get(
   '/suggested-bom',
   validate(installationValidation.getSuggestedBOMValidation, 'query'),
   asyncHandler(installationController.getSuggestedBOM)
+);
+
+// ==================== evidence ====================
+// What the crew records on the roof: panel serials and photographs, the two site
+// pictures, the inverter. `edit_installation` rather than `create_installation`,
+// because the crew that documents a job never files one.
+
+router.get(
+  '/:id/evidence-gaps',
+  hasPermission('view_installation'),
+  asyncHandler(installationController.getEvidenceGaps)
+);
+
+router.post(
+  '/:id/panels',
+  hasPermission('edit_installation'),
+  asyncHandler(installationController.addPanelUnit)
+);
+
+router.patch(
+  '/:id/panels/:panelId',
+  hasPermission('edit_installation'),
+  asyncHandler(installationController.updatePanelUnit)
+);
+
+router.delete(
+  '/:id/panels/:panelId',
+  hasPermission('edit_installation'),
+  asyncHandler(installationController.removePanelUnit)
+);
+
+router.patch(
+  '/:id/inverter',
+  hasPermission('edit_installation'),
+  asyncHandler(installationController.updateInverter)
+);
+
+router.post(
+  '/:id/evidence-photo',
+  hasPermission('edit_installation'),
+  uploadSingleToMemory('file'),
+  asyncHandler(installationController.uploadEvidencePhoto)
+);
+
+router.patch(
+  '/:id/complete',
+  hasPermission('edit_installation'),
+  asyncHandler(installationController.completeInstallation)
+);
+
+// ==================== crew & board ====================
+// The installation department's own board: their jobs, their counters. Seeded
+// above '/:id' so 'dashboard' is not read as an installation id.
+
+router.get(
+  '/dashboard',
+  hasPermission('view_installation'),
+  asyncHandler(installationController.getInstallationDashboard)
+);
+
+router.get(
+  '/team-candidates',
+  hasPermission('view_installation'),
+  asyncHandler(installationController.listTeamCandidates)
+);
+
+router.patch(
+  '/:id/team',
+  hasPermission('create_installation'),
+  asyncHandler(installationController.setInstallationTeam)
+);
+
+// GET /api/v1/installations/installable-applications
+// Applications with no installation yet — the only list the create form offers.
+// Must stay above '/:id', which would otherwise read it as an installation id.
+router.get(
+  '/installable-applications',
+  hasPermission('view_installation'),
+  asyncHandler(installationController.listInstallableApplications)
 );
 
 // GET /api/v1/installations/:id - Get installation by ID

@@ -50,7 +50,9 @@ const READ_ROLES = ['admin', 'manager', 'agent'];
 const APPLICATION_WRITE_ROLES = ['admin', 'manager', 'agent'];
 
 /**
- * The office's half: verdicts, workflow status and the signed copies.
+ * The office's half: verdicts and workflow status — including the verdict on a
+ * signed copy an agent has filed. Filing one is open to the agent too; accepting
+ * it is not.
  *
  * Exported so the new-application notice can be tested against it â€” that notice
  * is addressed to `OFFICE_ROLES`, and a test asserts the two lists agree. A
@@ -234,13 +236,42 @@ router.patch(
 /**
  * POST /api/v1/applications/:id/signed-document
  * The scanned, consumer-signed copy of the quotation or the agreement.
+ *
+ * The field agent may file it too, not just the office. The paper is signed in
+ * the consumer's house, and the agents work up to 100 km away — making them
+ * carry it back to the office so an admin can upload it meant a second wasted
+ * trip for every signature. What keeps this safe is not the role gate but the
+ * verdict: an agent's upload lands with `review.status = 'pending'` and only an
+ * admin/manager can accept it (PATCH …/documents/:documentId/review). An office
+ * upload counts as accepted on arrival, because the reviewer is the uploader.
  */
 router.post(
   '/:id/signed-document',
-  authorize(...REVIEW_ROLES),
+  authorize(...APPLICATION_WRITE_ROLES),
   validateParams(applicationIdParamSchema),
   uploadSingleToMemory('file'),
   asyncHandler(applicationController.uploadSignedDocument)
+);
+
+/**
+ * POST /api/v1/applications/:id/issue-quotation
+ * Build the quotation from the application, render the PDF and file it on the
+ * application as `issuedQuotation`. Office only: this issues paper in the
+ * company's name.
+ */
+router.post(
+  '/:id/issue-quotation',
+  authorize(...REVIEW_ROLES),
+  validateParams(applicationIdParamSchema),
+  asyncHandler(applicationController.issueQuotation)
+);
+
+/** POST /api/v1/applications/:id/issue-agreement — the same, for the agreement. */
+router.post(
+  '/:id/issue-agreement',
+  authorize(...REVIEW_ROLES),
+  validateParams(applicationIdParamSchema),
+  asyncHandler(applicationController.issueAgreement)
 );
 
 /** DELETE /api/v1/applications/:id â€” the agent discards a draft or a sent-back one. */

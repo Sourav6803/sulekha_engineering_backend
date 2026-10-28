@@ -110,9 +110,26 @@ const quotationBodyFields = {
   amountIncludesGST: Joi.boolean(),
   amountInWords: Joi.string().trim().max(300).allow(''),
 
-  // 'terms' and 'paymentTerms' are deliberately not accepted from the client:
-  // they are fixed company-wide (CompanyProfile) so every quotation states the
-  // same thing. The service copies them onto the quotation at creation time.
+  /*
+   * Terms are writable, and start from the company's wording when the client
+   * sends none (the service falls back to the CompanyProfile). A sheet
+   * occasionally has to carry a clause the standard block does not — an extra AMC
+   * year, a different GST note, a partner's split — so this cannot be fixed.
+   * An empty line is dropped by the service; the caps here match the model.
+   */
+  terms: Joi.array()
+    .items(
+      Joi.object({
+        label: Joi.string().trim().max(60).allow(null, ''),
+        // Blank is allowed here and dropped by the service: a half-typed line in
+        // the editor should not fail the save with a validation error.
+        text: Joi.string().trim().max(300).allow(''),
+      })
+    )
+    .max(40),
+  paymentTerms: Joi.array()
+    .items(Joi.object({ text: Joi.string().trim().max(200).allow('') }))
+    .max(20),
 
   issueDate,
   validUntil,

@@ -29,6 +29,10 @@ import { assessCredit } from '../data/lenderCriteria.js';
 import { checkImageQuality, isImageMimeType } from './imageQuality.service.js';
 import { storeDocument, removeDocument } from './documentStorage.service.js';
 import { notifyAgentOfSignedDocument } from './signedDocumentNotice.service.js';
+import {
+  notifyAgentOfSignedCopyVerdict,
+  notifyOfficeOfSignedCopy,
+} from './signedCopyReviewNotice.service.js';
 import { notifyOfficeOfNewApplication } from './newApplicationNotice.service.js';
 import {
   BILL_PORTAL_URL,
@@ -44,7 +48,36 @@ import {
 
 const OVERSIGHT_ROLES = ['admin', 'manager'];
 
+/** The two documents the consumer signs, and the office (or the agent) files. */
+const SIGNED_DOCUMENT_KINDS = ['signedQuotation', 'signedAgreement'];
+
 const isOversight = (user) => OVERSIGHT_ROLES.includes(user?.role);
+
+/**
+ * The date the consumer actually signed, as the person filing it states it.
+ *
+ * Optional — a field agent should not be blocked from filing the scan over a
+ * date they cannot remember. But when it *is* given it has to be a real date and
+ * not in the future: a copy dated tomorrow is a typo, and letting it through puts
+ * a wrong date on the paper of record with nothing to catch it later.
+ */
+const parseSignedOn = (value) => {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw ApiError.validation('That is not a valid date', {
+      signedOn: 'Enter the date the consumer signed the copy.',
+    });
+  }
+  if (date.getTime() > Date.now() + 24 * 60 * 60 * 1000) {
+    throw ApiError.validation('The signed date cannot be in the future', {
+      signedOn: 'The consumer cannot have signed this in the future.',
+    });
+  }
+
+  return date;
+};
 
 /**
  * An agent may only touch their own applications; admin and manager see
@@ -355,8 +388,11 @@ class ApplicationService {
 
   async getApplication(id, user) {
     const application = await Application.findById(id)
-      .populate('agent', 'name email employeeId phone')
-      .populate('customer', 'name customerId phone')
+      .populate('agent', 'name email employeeId office phone')
+      .populate(
+        'customer',
+        'name customerId phone landmark street village block panchayat district city state pincode address electricBill'
+      )
       .populate('quotation', 'quotationNo status totalAmount')
       .populate('agreement', 'agreementNo status')
       .populate('review.reviewedBy', 'name');
@@ -364,6 +400,75 @@ class ApplicationService {
     // The guard the whole module documents: an agent may only open their own
     // application; admin and manager see everything.
     // assertAccess(application, user);
+
+    return this.fillIdentityGaps(application);
+  }
+
+  /**
+   * Fill the blanks an application filed before the identity copy was complete
+   * is still carrying — in the response only, never in the database.
+   *
+   * The landmark and the two electricity-bill ids were not copied from the
+   * customer at creation for a while, so an older application shows empty fields
+   * beside a customer record that has them: the office reads "landmark: —" and
+   * "consumer ID: —" and re-types what the household already told us once. This
+   * only ever fills a gap — a value already on the application always wins, since
+   * the application is the snapshot the paperwork was printed from.
+   *
+   * `verified` is not touched: that is a verdict about this application's bill
+   * and stays false until the office marks it.
+   */
+  /**
+   * Take the two electricity-bill ids from the customer when the application has
+   * none, and write them onto the application.
+   *
+   * The read-time fill in `fillIdentityGaps` only makes the screen look right; the
+   * verifier and the issued paperwork read the record. Without this, the office
+   * sees the ids, presses "Mark verified", and is told they were never recorded.
+   *
+   * @returns {Promise<boolean>} Whether anything was adopted (caller still saves).
+   */
+  async adoptCustomerBillIds(application) {
+    if (!application?.customer) return false;
+
+    const missingConsumer = !application.electricBill?.consumerId;
+    const missingInstallation = !application.electricBill?.installationNo;
+    if (!missingConsumer && !missingInstallation) return false;
+
+    const customer = await Customer.findById(application.customer).select('electricBill').lean();
+    if (!customer?.electricBill) return false;
+
+    let adopted = false;
+
+    if (missingConsumer && customer.electricBill.consumerId) {
+      application.set('electricBill.consumerId', customer.electricBill.consumerId);
+      adopted = true;
+    }
+    if (missingInstallation && customer.electricBill.installationNo) {
+      application.set('electricBill.installationNo', customer.electricBill.installationNo);
+      adopted = true;
+    }
+
+    return adopted;
+  }
+
+  fillIdentityGaps(application) {
+    const customer = application?.customer;
+    if (!application || !customer || typeof customer !== 'object') return application;
+
+    if (application.address && !application.address.landmark && customer.landmark) {
+      application.address.landmark = customer.landmark;
+    }
+
+    const bill = application.electricBill;
+    if (bill) {
+      if (!bill.consumerId && customer.electricBill?.consumerId) {
+        bill.consumerId = customer.electricBill.consumerId;
+      }
+      if (!bill.installationNo && customer.electricBill?.installationNo) {
+        bill.installationNo = customer.electricBill.installationNo;
+      }
+    }
 
     return application;
   }
@@ -390,6 +495,10 @@ class ApplicationService {
         village: customer.village || undefined,
         block: customer.block || undefined,
         panchayat: customer.panchayat || undefined,
+        // The landmark is how the installation team finds a house in a village
+        // with no door numbers; leaving it behind made every site visit start
+        // with a phone call.
+        landmark: customer.landmark || undefined,
         district: customer.district || undefined,
         city: customer.city || undefined,
         state: customer.state || undefined,
@@ -452,7 +561,22 @@ class ApplicationService {
       },
       loan: body.loan ?? customer.loan,
       creditCheck: body.creditCheck ?? customer.creditCheck,
-      electricBill: body.electricBill ?? customer.electricBill,
+      /*
+       * The two ids are read field by field, not handed over whole.
+       *
+       * `body.electricBill` used to win outright whenever it was present — and the
+       * wizard sends `{}` often enough that an empty object could wipe the ids the
+       * customer record already had, leaving the bill section blank on this file.
+       * `verified` is deliberately *not* carried across: the office verifies the
+       * bill of this application, not the customer's memory of an old one.
+       */
+      electricBill: {
+        consumerId: body.electricBill?.consumerId || customer.electricBill?.consumerId,
+        installationNo: body.electricBill?.installationNo || customer.electricBill?.installationNo,
+        portalUrl: body.electricBill?.portalUrl,
+        fileUrl: body.electricBill?.fileUrl,
+        fileName: body.electricBill?.fileName,
+      },
       nameMatch: body.nameMatch ?? customer.nameMatch,
     };
 
@@ -525,6 +649,8 @@ class ApplicationService {
         uploadedAt: doc.uploadedAt,
       }));
 
+    const carriedBill = carriedDocuments.find((doc) => doc.kind === 'electricBill');
+
     const application = new Application({
       ...body,
       ...identity,
@@ -536,8 +662,23 @@ class ApplicationService {
       status: 'draft',
       createdBy: user._id,
       updatedBy: user._id,
+      /*
+       * `body.electricBill` was already normalised above — the ids that came with
+       * the request, falling back to the customer's. Hard-coding `{ portalUrl }`
+       * here is what silently threw them away: the page then showed a blank
+       * consumer ID beside a customer record that had one.
+       */
       electricBill: {
-        portalUrl: BILL_PORTAL_URL,
+        ...(body.electricBill ?? {}),
+        portalUrl: body.electricBill?.portalUrl || BILL_PORTAL_URL,
+        /*
+         * The bill the agent photographed travels over with the other papers, so
+         * point the bill fields at it. Without this the application held the file
+         * in `documents` but `electricBill.fileUrl` stayed empty — and the office
+         * could not mark the bill verified, because that check requires the file.
+         */
+        fileUrl: body.electricBill?.fileUrl || carriedBill?.url,
+        fileName: body.electricBill?.fileName || carriedBill?.fileName,
       },
     });
 
@@ -863,6 +1004,10 @@ class ApplicationService {
     if (kind === 'electricBill') {
       application.electricBill.fileUrl = stored.url;
       application.electricBill.fileName = stored.fileName;
+      // The file and the ids belong together: if the household's ids are only on
+      // the customer record, this is the moment to make the application self-
+      // contained, so the verifier does not find an id-less bill.
+      await this.adoptCustomerBillIds(application);
     }
 
     application.updatedBy = user._id;
@@ -885,6 +1030,24 @@ class ApplicationService {
 
     const document = application.documents.id(documentId);
     if (!document) throw ApiError.notFound('Document');
+
+    /*
+     * An approved signed copy is evidence, not a working file.
+     *
+     * The agent who uploaded it may not delete it — otherwise the paper the
+     * office accepted disappears and nothing on the application records that it
+     * ever existed. Only the office removes one, and only as a deliberate
+     * replacement (the superseded copy keeps its verdict either way).
+     */
+    if (
+      SIGNED_DOCUMENT_KINDS.includes(document.kind) &&
+      document.review?.status === 'accepted' &&
+      !isOversight(user)
+    ) {
+      throw ApiError.forbidden(
+        'This signed copy has already been approved by the office and cannot be removed. Ask the office to replace it.'
+      );
+    }
 
     await removeDocument({ url: document.url, publicId: document.publicId });
 
@@ -932,6 +1095,24 @@ class ApplicationService {
     application.updatedBy = user._id;
     await application.save();
 
+    /*
+     * The verdict has to reach the person who filed the scan.
+     *
+     * A rejection that only changes a badge leaves the agent with no idea the
+     * paper is coming back — and they find out days later, in front of the
+     * consumer, which means a third visit. Only the signed kinds are announced:
+     * every other checklist document is visible in the application, and mailing
+     * the agent for each one would bury this notice in noise.
+     */
+    if (SIGNED_DOCUMENT_KINDS.includes(document.kind)) {
+      await notifyAgentOfSignedCopyVerdict(application, {
+        verdict: body.status,
+        kind: document.kind,
+        reason: body.reason,
+        actor: user,
+      });
+    }
+
     return application;
   }
 
@@ -954,12 +1135,33 @@ class ApplicationService {
       (doc) => doc.qualityCheck?.verdict === 'fail'
     ).length;
 
+    /**
+     * The signed paper's own state, per kind.
+     *
+     * The checklist lists the signed quotation and agreement as optional, so
+     * `missing` says nothing about them — but "a file exists" is not the same as
+     * "the office accepted it". The UI needs the difference, and a rejected scan
+     * must never read as done. Latest accepted copy wins; failing that a pending
+     * one; failing that the only copies left were sent back.
+     */
+    const signedState = (kind) => {
+      const copies = (application.documents || []).filter((doc) => doc.kind === kind);
+      if (copies.length === 0) return 'missing';
+      if (copies.some((doc) => doc.review?.status === 'accepted')) return 'accepted';
+      if (copies.some((doc) => doc.review?.status === 'pending')) return 'pending';
+      return 'rejected';
+    };
+
     return {
       byKind,
       missing,
       unclear,
       total: application.documents?.length || 0,
       complete: missing.length === 0,
+      signed: {
+        signedQuotation: signedState('signedQuotation'),
+        signedAgreement: signedState('signedAgreement'),
+      },
     };
   }
 
@@ -1010,6 +1212,18 @@ class ApplicationService {
   async verifyElectricBill(id, body, user) {
     const application = await Application.findById(id);
     assertAccess(application, user);
+
+    /*
+     * Adopt the ids from the customer before checking them.
+     *
+     * Applications filed before the identity copy was fixed carry the two ids
+     * only on the customer record — and the detail screen shows them anyway, from
+     * the same fallback, so the office presses "Mark verified" on a screen that
+     * looks complete and is told nothing has been recorded. Reading them here and
+     * writing them onto the application makes the check agree with the screen, and
+     * the file stops depending on the customer record from then on.
+     */
+    await this.adoptCustomerBillIds(application);
 
     if (!application.electricBill?.consumerId || !application.electricBill?.installationNo) {
       throw ApiError.badRequest('The consumer ID and installation ID have not been recorded yet.');
@@ -1143,8 +1357,16 @@ class ApplicationService {
    * Attach the scanned, signed copy of a quotation or agreement.
    *
    * The paper flow is: the office prints the quotation, the consumer signs it,
-   * the signed copy is scanned to PDF and comes back here. It is stored as its
-   * own document so the original generated PDF is never overwritten.
+   * the signed copy is scanned and comes back here. It is stored as its own
+   * document so the original generated PDF is never overwritten.
+   *
+   * Both the office and the field agent may file it. The agent is the one
+   * standing in the consumer's house, and they work up to 100 km away — making
+   * them carry every signed sheet back to the office so an admin could upload it
+   * meant a second visit per signature. What keeps an agent's upload honest is
+   * the verdict, not the role: it lands with `review.status = 'pending'` and only
+   * the office can accept it. An office upload is accepted on arrival, because
+   * the reviewer is the uploader — there is nobody above them to ask.
    */
   async attachSignedDocument(id, file, body = {}, user) {
     if (!file) throw ApiError.badRequest('No file uploaded');
@@ -1153,6 +1375,26 @@ class ApplicationService {
     assertAccess(application, user);
 
     const kind = body.kind === 'signedAgreement' ? 'signedAgreement' : 'signedQuotation';
+    const office = isOversight(user);
+    const signedOn = parseSignedOn(body.signedOn);
+    const note = String(body.note || '').trim().slice(0, 300);
+
+    /*
+     * An accepted copy is the signed paper of record.
+     *
+     * Once the office has accepted a scan, an agent may not quietly drop a new
+     * one on top of it — that is how a signed agreement gets swapped without
+     * anybody noticing. The office can still replace it, deliberately, and the
+     * superseded copy stays on the file with its verdict so the trail survives.
+     */
+    const accepted = (application.documents || []).find(
+      (doc) => doc.kind === kind && doc.review?.status === 'accepted'
+    );
+    if (accepted && !office) {
+      throw ApiError.forbidden(
+        'This signed copy is already approved by the office. If a new scan is needed, ask the office to replace it.'
+      );
+    }
 
     const stored = await storeDocument(file, {
       folder: `sulekha/applications/${application.applicationNo.replace(/\//g, '-')}/signed`,
@@ -1166,7 +1408,11 @@ class ApplicationService {
       fileSize: stored.bytes,
       mimeType: file.mimetype,
       qualityCheck: { verdict: 'skipped', score: 100, reasons: [] },
-      review: { status: 'pending' },
+      review: office
+        ? { status: 'accepted', reviewedBy: user._id, reviewedAt: new Date() }
+        : { status: 'pending' },
+      signedOn: signedOn || null,
+      note,
       uploadedBy: user._id,
       uploadedAt: new Date(),
     });
@@ -1174,18 +1420,43 @@ class ApplicationService {
     application.updatedBy = user._id;
     await application.save();
 
-    logger.info({ applicationNo: application.applicationNo, kind }, 'Signed document attached');
+    const added = application.documents[application.documents.length - 1];
+
+    logger.info(
+      {
+        applicationNo: application.applicationNo,
+        kind,
+        filedBy: user.email,
+        reviewStatus: added.review?.status,
+      },
+      'Signed document attached'
+    );
 
     /*
-     * The agent who collected the application is the one who has to put the
-     * signed copy in the consumer's hands, so they are told about it in the app
-     * and by email. Deliberately not awaited-for-success: the notice never
-     * throws (see signedDocumentNotice.service.js), because the filing itself
-     * has already been stored by this point and must not appear to have failed.
+     * The notice follows the paper, not the person who filed it.
+     *
+     * An office upload means "the signed copy is filed — agent, give it to the
+     * consumer", which is what notifyAgentOfSignedDocument says. An agent upload
+     * means "office, a scan is waiting for your verdict" — a different notice to
+     * a different audience. Firing the agent notice on an agent's own upload told
+     * them about their own work and left the pending queue silent, so the branch
+     * is the point, not a detail.
+     *
+     * Neither notice throws (see both notice services): the filing is already
+     * stored by now, and a dead mailbox must not make a successful upload look
+     * like a failure.
      */
-    await notifyAgentOfSignedDocument(application, { actor: user });
+    if (office) {
+      await notifyAgentOfSignedDocument(application, { actor: user });
+    } else {
+      await notifyOfficeOfSignedCopy(application, {
+        actor: user,
+        kind,
+        signedOn: signedOn || undefined,
+      });
+    }
 
-    return application.documents[application.documents.length - 1];
+    return added;
   }
 
   async deleteApplication(id, user) {
