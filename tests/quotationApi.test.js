@@ -329,6 +329,85 @@ test('system type: an unknown value is refused', async () => {
   assert.equal(res.status, 422);
 });
 
+// ===========================================================================
+// ship to (same as Bill To)
+// ===========================================================================
+
+test('ship to: a blank delivery block is copied from Bill To', async () => {
+  const res = await createQuotation();
+  assert.equal(res.status, 201, JSON.stringify(res.body));
+
+  const { shipTo } = res.body.data;
+  assert.equal(shipTo.name, 'Souvik Ghosh');
+  assert.equal(shipTo.phone, '9432665126');
+  // same two lines the Bill To block prints: address, then district and PIN
+  assert.deepEqual(shipTo.addressLines, ['Birpur, Gurap', 'Hooghly, 712303']);
+});
+
+test('ship to: an empty block sent by the form is treated as "same as Bill To"', async () => {
+  const res = await createQuotation({ shipTo: { name: '', addressLines: [], phone: '' } });
+  assert.equal(res.status, 201, JSON.stringify(res.body));
+
+  assert.equal(res.body.data.shipTo.name, 'Souvik Ghosh');
+  assert.deepEqual(res.body.data.shipTo.addressLines, ['Birpur, Gurap', 'Hooghly, 712303']);
+});
+
+test('ship to: a different delivery address is kept as typed', async () => {
+  const res = await createQuotation({
+    shipTo: { name: 'Site Office', addressLines: ['Plot 12, Jamalpur', 'Bardhaman, 713404'], phone: '9832117393' },
+  });
+  assert.equal(res.status, 201, JSON.stringify(res.body));
+
+  assert.equal(res.body.data.shipTo.name, 'Site Office');
+  assert.deepEqual(res.body.data.shipTo.addressLines, ['Plot 12, Jamalpur', 'Bardhaman, 713404']);
+  assert.equal(res.body.data.shipTo.phone, '9832117393');
+});
+
+test('ship to: a copied block follows an edit of the billing address', async () => {
+  const created = await createQuotation();
+  const id = created.body.data._id;
+
+  const res = await asAdmin(request(env.app).put(`${base}/${id}`)).send({
+    addressLine1: 'Netaji Road, Gurap',
+    district: 'Bardhaman',
+  });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+
+  const updated = res.body.data.quotation;
+  assert.equal(updated.shipTo.name, 'Souvik Ghosh');
+  assert.deepEqual(updated.shipTo.addressLines, ['Netaji Road, Gurap', 'Bardhaman, 712303']);
+});
+
+test('ship to: a typed delivery address is never overwritten by a Bill To edit', async () => {
+  const created = await createQuotation({
+    shipTo: { name: 'Site Office', addressLines: ['Plot 12, Jamalpur'], phone: '9832117393' },
+  });
+  const id = created.body.data._id;
+
+  const res = await asAdmin(request(env.app).put(`${base}/${id}`)).send({ district: 'Bardhaman' });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+
+  const updated = res.body.data.quotation;
+  assert.equal(updated.shipTo.name, 'Site Office');
+  assert.deepEqual(updated.shipTo.addressLines, ['Plot 12, Jamalpur']);
+});
+
+test('ship to: ticking the box back on restores the copy', async () => {
+  const created = await createQuotation({
+    shipTo: { name: 'Site Office', addressLines: ['Plot 12, Jamalpur'], phone: '9832117393' },
+  });
+  const id = created.body.data._id;
+
+  // The form sends a blank block when "same as Bill To" is ticked.
+  const res = await asAdmin(request(env.app).put(`${base}/${id}`)).send({
+    shipTo: { name: '', addressLines: [], phone: '' },
+  });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+
+  assert.equal(res.body.data.quotation.shipTo.name, 'Souvik Ghosh');
+  assert.deepEqual(res.body.data.quotation.shipTo.addressLines, ['Birpur, Gurap', 'Hooghly, 712303']);
+});
+
 test('terms: a sheet can carry its own wording over the company default', async () => {
   const res = await createQuotation({
     terms: [{ text: 'Our own special term' }],
@@ -544,7 +623,14 @@ test('update: saves changes, records a revision and recomputes the words', async
   });
 
   assert.equal(res.status, 200, JSON.stringify(res.body));
-  assert.deepEqual(res.body.data.changedFields.sort(), ['addressLine2', 'amount', 'amountInWords']);
+  // shipTo comes along: the delivery block is a copy of Bill To, so a change to
+  // the billing address is reprinted there too.
+  assert.deepEqual(res.body.data.changedFields.sort(), [
+    'addressLine2',
+    'amount',
+    'amountInWords',
+    'shipTo',
+  ]);
   assert.equal(res.body.data.quotation.amount, 210000);
   assert.equal(res.body.data.quotation.amountInWords, 'Two Lakh Ten Thousand Rupees Only');
   assert.equal(res.body.data.warnings.length, 0);
@@ -918,4 +1004,13 @@ test('document: a deleted quotation still renders (its number is kept for reprin
   const res = await asAdmin(request(env.app).get(`${base}/${id}/print`));
   assert.equal(res.status, 200);
   assert.match(res.text, /SE\/PMSGY\/2026-27\/1/);
+});
+
+test('ship to: the printed sheet carries the delivery block beside Bill To', async () => {
+  const res = await createQuotation();
+  const print = await asAdmin(request(env.app).get(`${base}/${res.body.data._id}/print`));
+
+  // Once in Bill To, once in Ship To - the two columns must agree.
+  assert.equal((print.text.match(/Birpur, Gurap/g) || []).length, 2);
+  assert.match(print.text, /Ship To:/);
 });

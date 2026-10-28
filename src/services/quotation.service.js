@@ -21,6 +21,9 @@ import {
   buildDefaultPaymentTerms,
   buildSystemOverview,
   buildCompanySnapshot,
+  buildShipToFromBillTo,
+  resolveShipTo,
+  shipToMatchesBillTo,
 } from '../utils/quotationDefaults.js';
 import { uploadToCloudinaryDetailed, deleteFromCloudinary } from './storage.service.js';
 import { MAX_ITEM_LINES } from '../models/Quotation.js';
@@ -580,7 +583,13 @@ export const quotationService = {
       addressLine2: withCustomer.addressLine2 || '',
       district: withCustomer.district || '',
       pincode: withCustomer.pincode || '',
-      shipTo: withCustomer.shipTo || {},
+      /*
+       * Almost every job is delivered to the address being billed, and the form
+       * leaves the delivery block alone unless "different ship-to" is ticked.
+       * Filling it here keeps the printed columns from disagreeing — the sheet
+       * used to show an empty Ship To beside a complete Bill To.
+       */
+      shipTo: resolveShipTo(withCustomer.shipTo, withCustomer),
       systemSizeKW: withCustomer.systemSizeKW,
       panelWp,
       panelQty,
@@ -1004,6 +1013,24 @@ export const quotationService = {
         structureType: input.structureType ?? quotation.structureType,
         systemType: input.systemType ?? quotation.systemType,
       });
+    }
+
+    /*
+     * The delivery block follows Bill To when it was only a copy of it — otherwise
+     * editing the billing address would leave the reprint with the old site
+     * address beside the new billing one. A block the office typed itself is never
+     * rewritten; only a blank one is filled in.
+     */
+    const BILL_TO_FIELDS = ['customerName', 'addressLine1', 'addressLine2', 'district', 'pincode', 'phoneNo'];
+    const billToTouched = BILL_TO_FIELDS.some((key) => input[key] !== undefined);
+    const mergedSource = { ...quotation.toObject(), ...input };
+
+    if (input.shipTo === undefined) {
+      if (billToTouched && shipToMatchesBillTo(quotation.shipTo, quotation)) {
+        input.shipTo = buildShipToFromBillTo(mergedSource);
+      }
+    } else {
+      input.shipTo = resolveShipTo(input.shipTo, mergedSource);
     }
 
     for (const [key, value] of Object.entries(input)) {

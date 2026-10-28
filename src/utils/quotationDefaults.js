@@ -81,6 +81,46 @@ const formatNumber = (value) => {
 };
 
 /**
+ * The Bill To block, in the shape the delivery block uses.
+ *
+ * The two columns sit side by side on the sheet and almost every domestic job
+ * delivers to the address being billed, so the form offers "same as Bill To" and
+ * the server falls back to this whenever no delivery address was given. The lines
+ * are assembled the way the PDF assembles Bill To (address lines joined, then
+ * district and PIN), so the two columns read identically.
+ */
+export const buildShipToFromBillTo = (source = {}) => ({
+  name: String(source.customerName ?? '').trim(),
+  addressLines: [
+    [source.addressLine1, source.addressLine2].map((line) => String(line ?? '').trim()).filter(Boolean).join(', '),
+    [source.district, source.pincode].map((line) => String(line ?? '').trim()).filter(Boolean).join(', '),
+  ].filter(Boolean),
+  phone: String(source.phoneNo ?? '').trim(),
+});
+
+/**
+ * Keep the delivery block the office typed, or copy Bill To when it left it blank.
+ *
+ * A partly filled block is kept as typed: someone who wrote only a site name meant
+ * a different site, and silently completing it with the billing address would put
+ * the wrong address on the paper.
+ */
+export const resolveShipTo = (shipTo, billTo) => {
+  const typed = {
+    name: String(shipTo?.name ?? '').trim(),
+    addressLines: (shipTo?.addressLines ?? []).map((line) => String(line ?? '').trim()).filter(Boolean),
+    phone: String(shipTo?.phone ?? '').trim(),
+  };
+
+  if (typed.name || typed.addressLines.length || typed.phone) return typed;
+  return buildShipToFromBillTo(billTo);
+};
+
+/** True when the delivery block is only a copy of Bill To. */
+export const shipToMatchesBillTo = (shipTo, billTo) =>
+  JSON.stringify(resolveShipTo(shipTo, billTo)) === JSON.stringify(buildShipToFromBillTo(billTo));
+
+/**
  * Default BOQ lines for a new quotation.
  *
  * @param {Object} profile  CompanyProfile document (or plain object)
@@ -198,6 +238,9 @@ export default {
   fillTemplate,
   resolveStructure,
   buildSystemOverview,
+  buildShipToFromBillTo,
+  resolveShipTo,
+  shipToMatchesBillTo,
   buildDefaultItems,
   buildDefaultTerms,
   buildDefaultPaymentTerms,
