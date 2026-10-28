@@ -22,6 +22,24 @@ export const QUOTATION_TYPES = ['consumer', 'partner'];
 
 export const DEFAULT_QUOTATION_TYPE = 'consumer';
 
+/**
+ * The kinds of inverter a sheet can promise. This is the value that fills
+ * `{{systemType}}` in the System Overview sentence — which used to hard-code
+ * "ongrid" and therefore printed a lie on every hybrid and off-grid job.
+ *
+ * Ordered as they appear in the dropdown: the common case first.
+ */
+export const SYSTEM_TYPES = ['ongrid', 'offgrid', 'hybrid'];
+
+export const DEFAULT_SYSTEM_TYPE = 'ongrid';
+
+/** Human label for the printed sentence and the form: "on-grid", "off-grid", "hybrid". */
+export const SYSTEM_TYPE_LABELS = {
+  ongrid: 'on-grid',
+  offgrid: 'off-grid',
+  hybrid: 'hybrid',
+};
+
 /** Title used when the profile has no partner title of its own. */
 export const DEFAULT_PARTNER_TITLE = 'QUOTATION FOR GRID CONNECTED SOLAR POWER PLANT ON-GRID & OFF-GRID';
 

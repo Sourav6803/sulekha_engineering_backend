@@ -7,7 +7,12 @@ import {
   normaliseSchemeCode,
 } from '../utils/quotationNumber.js';
 import { amountInWords } from '../utils/amountInWords.js';
-import { QUOTATION_TYPES, DEFAULT_QUOTATION_TYPE } from '../data/quotationTypes.js';
+import {
+  QUOTATION_TYPES,
+  DEFAULT_QUOTATION_TYPE,
+  SYSTEM_TYPES,
+  DEFAULT_SYSTEM_TYPE,
+} from '../data/quotationTypes.js';
 import { isValidQty } from '../utils/quotationQuantity.js';
 
 const { Schema } = mongoose;
@@ -263,6 +268,17 @@ const QuotationSchema = new Schema(
       min: [0.1, 'System size must be at least 0.1 kW'],
       max: [100, 'System size cannot exceed 100 kW'],
       default: null,
+    },
+    /**
+     * What kind of inverter the sheet promises. Printed inside the system
+     * overview sentence, which used to say "ongrid" no matter what was installed.
+     * Defaults to ongrid because that is what almost every PM Surya Ghar rooftop
+     * gets; off-grid and hybrid are the exceptions the field exists for.
+     */
+    systemType: {
+      type: String,
+      enum: { values: SYSTEM_TYPES, message: 'Invalid system type' },
+      default: DEFAULT_SYSTEM_TYPE,
     },
     panelWp: { type: Number, min: 100, max: 1000, default: null },
     panelQty: { type: Number, min: 1, default: null },

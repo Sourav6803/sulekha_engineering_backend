@@ -29,6 +29,7 @@ import {
   DEFAULT_QUOTATION_TYPE,
   DEFAULT_PARTNER_TITLE,
   DEFAULT_PARTNER_TAGLINE,
+  DEFAULT_SYSTEM_TYPE,
   rulesForType,
 } from '../data/quotationTypes.js';
 
@@ -69,7 +70,7 @@ const CREATABLE_FIELDS = [
   'customer', 'customerName', 'consumerId', 'phoneNo', 'addressLine1', 'addressLine2',
   'district', 'pincode', 'shipTo',
   'systemSizeKW', 'panelWp', 'panelQty', 'panelBrand', 'inverterCapacityKW', 'inverterBrand',
-  'structureType', 'systemOverview',
+  'systemType', 'structureType', 'systemOverview',
   'items', 'amount', 'amountIncludesGST', 'amountInWords',
   /*
    * `terms` / `paymentTerms` default to the company's wording but are writable:
@@ -564,6 +565,7 @@ export const quotationService = {
         systemSizeKW: withCustomer.systemSizeKW,
         inverterCapacityKW,
         structureType: withCustomer.structureType || profile.defaultStructure,
+        systemType: withCustomer.systemType || DEFAULT_SYSTEM_TYPE,
       });
 
     const baseDoc = {
@@ -585,6 +587,7 @@ export const quotationService = {
       panelBrand: withCustomer.panelBrand || '',
       inverterCapacityKW,
       inverterBrand: withCustomer.inverterBrand || '',
+      systemType: withCustomer.systemType || DEFAULT_SYSTEM_TYPE,
       structureType: withCustomer.structureType || profile.defaultStructure,
       systemOverview,
       items,
@@ -981,13 +984,25 @@ export const quotationService = {
 
     // Keep the derived overview in step when the system changes and the caller
     // did not supply new wording.
-    if (input.systemOverview === undefined && (input.systemSizeKW !== undefined || input.structureType !== undefined || input.inverterCapacityKW !== undefined)) {
+    /*
+     * Switching the type alone has to reprint the sentence too — otherwise an
+     * edit from on-grid to hybrid leaves "3 kw ongrid inverter" sitting in the
+     * overview, which is the bug this field was added to fix.
+     */
+    if (
+      input.systemOverview === undefined &&
+      (input.systemSizeKW !== undefined ||
+        input.structureType !== undefined ||
+        input.inverterCapacityKW !== undefined ||
+        input.systemType !== undefined)
+    ) {
       const profile = await this.resolveProfile();
       input.systemOverview = buildSystemOverview(profile, {
         quotationType: effectiveType,
         systemSizeKW: input.systemSizeKW ?? quotation.systemSizeKW,
         inverterCapacityKW: input.inverterCapacityKW ?? quotation.inverterCapacityKW ?? quotation.systemSizeKW,
         structureType: input.structureType ?? quotation.structureType,
+        systemType: input.systemType ?? quotation.systemType,
       });
     }
 

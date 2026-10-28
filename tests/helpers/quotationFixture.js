@@ -69,6 +69,8 @@ export const buildFixtureQuotation = (overrides = {}) => {
       systemSizeKW: merged.systemSizeKW,
       inverterCapacityKW: merged.inverterCapacityKW,
       structureType: merged.structureType,
+      // Undefined falls back to the on-grid default, as the service does.
+      systemType: merged.systemType,
     });
 
   return merged;

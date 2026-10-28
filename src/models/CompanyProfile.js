@@ -174,7 +174,7 @@ export const DEFAULT_ITEMS = [
 ];
 
 export const DEFAULT_OVERVIEW_TEMPLATE =
-  'We are pleased to submit the domestic proposal for Supply, Installation and Commissioning of {{systemSizeKW}} kw solar panel system with {{inverterCapacityKW}} kw ongrid inverter Assumptions include south-facing tilt and typical cable runs for {{structurePhrase}}.';
+  'We are pleased to submit the domestic proposal for Supply, Installation and Commissioning of {{systemSizeKW}} kw solar panel system with {{inverterCapacityKW}} kw {{systemType}} inverter Assumptions include south-facing tilt and typical cable runs for {{structurePhrase}}.';
 
 export const DEFAULT_PROFILE = {
   singletonKey: 'default',

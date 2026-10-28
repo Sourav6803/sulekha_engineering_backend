@@ -18,6 +18,8 @@ import {
   DEFAULT_PARTNER_TITLE,
   DEFAULT_PARTNER_TAGLINE,
   DEFAULT_QUOTATION_TYPE,
+  DEFAULT_SYSTEM_TYPE,
+  SYSTEM_TYPE_LABELS,
 } from '../data/quotationTypes.js';
 
 /** Is this the project/material sheet rather than the domestic one? */
@@ -50,7 +52,7 @@ export const resolveStructure = (profile, structureType) => {
  */
 export const buildSystemOverview = (
   profile,
-  { systemSizeKW, inverterCapacityKW, structureType, quotationType }
+  { systemSizeKW, inverterCapacityKW, structureType, quotationType, systemType }
 ) => {
   const structure = resolveStructure(profile, structureType);
   const template = isPartner(quotationType)
@@ -62,6 +64,12 @@ export const buildSystemOverview = (
     inverterCapacityKW: formatNumber(inverterCapacityKW ?? systemSizeKW),
     structurePhrase: structure.overviewPhrase,
     structureLabel: structure.label,
+    /*
+     * The sentence reads "... with 3 kw {{systemType}} inverter". Old templates
+     * (and old company snapshots) still say "ongrid" outright, in which case this
+     * token never appears and nothing changes for them.
+     */
+    systemType: SYSTEM_TYPE_LABELS[systemType] || SYSTEM_TYPE_LABELS[DEFAULT_SYSTEM_TYPE],
   }).trim();
 };
 

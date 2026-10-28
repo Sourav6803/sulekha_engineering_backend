@@ -268,10 +268,65 @@ test('create: the BOQ template is pre-filled and sized from the system', async (
   assert.equal(items[3].unit, null);
   assert.equal(items[4].unit, null);
 
-  assert.match(res.body.data.systemOverview, /3 kw solar panel system with 3 kw ongrid inverter/);
+  // The sentence prints the label, not the stored value: "on-grid", not "ongrid".
+  assert.match(res.body.data.systemOverview, /3 kw solar panel system with 3 kw on-grid inverter/);
   assert.match(res.body.data.systemOverview, /solar roof top high rise structures/);
   assert.equal(res.body.data.terms.length, 8);
   assert.equal(res.body.data.paymentTerms.length, 1);
+});
+
+// ===========================================================================
+// system type (on-grid / off-grid / hybrid)
+// ===========================================================================
+
+test('system type: defaults to on-grid when the form sends none', async () => {
+  const res = await createQuotation();
+  assert.equal(res.status, 201, JSON.stringify(res.body));
+
+  assert.equal(res.body.data.systemType, 'ongrid');
+  assert.match(res.body.data.systemOverview, /3 kw on-grid inverter/);
+});
+
+test('system type: a hybrid sheet prints hybrid, not on-grid', async () => {
+  const res = await createQuotation({ systemType: 'hybrid' });
+  assert.equal(res.status, 201, JSON.stringify(res.body));
+
+  assert.equal(res.body.data.systemType, 'hybrid');
+  assert.match(res.body.data.systemOverview, /3 kw hybrid inverter/);
+  assert.doesNotMatch(res.body.data.systemOverview, /on-grid/);
+
+  // and it reaches the printed document, which is the whole point
+  const print = await asAdmin(request(env.app).get(`${base}/${res.body.data._id}/print`));
+  assert.match(print.text, /3 kw hybrid inverter/);
+});
+
+test('system type: an off-grid sheet is accepted', async () => {
+  const res = await createQuotation({ systemType: 'offgrid' });
+  assert.equal(res.status, 201, JSON.stringify(res.body));
+
+  assert.match(res.body.data.systemOverview, /3 kw off-grid inverter/);
+});
+
+test('system type: switching the type on an edit reprints the overview', async () => {
+  const created = await createQuotation();
+  assert.match(created.body.data.systemOverview, /on-grid inverter/);
+
+  const res = await asAdmin(request(env.app).put(`${base}/${created.body.data._id}`)).send({
+    systemType: 'hybrid',
+  });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+
+  // The update endpoints answer with { quotation, changedFields, warnings }.
+  const updated = res.body.data.quotation;
+  assert.equal(updated.systemType, 'hybrid');
+  assert.match(updated.systemOverview, /3 kw hybrid inverter/);
+  assert.doesNotMatch(updated.systemOverview, /on-grid/);
+  assert.ok(res.body.data.changedFields.includes('systemOverview'));
+});
+
+test('system type: an unknown value is refused', async () => {
+  const res = await createQuotation({ systemType: 'ongrid-solar' });
+  assert.equal(res.status, 422);
 });
 
 test('terms: a sheet can carry its own wording over the company default', async () => {

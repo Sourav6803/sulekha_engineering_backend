@@ -110,7 +110,7 @@ test('html: a line without a unit leaves the unit cell empty', () => {
 test('html: the overview, terms, payment terms and bank footer are present', () => {
   const html = buildQuotationHTML(buildFixtureQuotation());
 
-  assert.match(html, /3 kw solar panel system with 3 kw ongrid inverter/);
+  assert.match(html, /3 kw solar panel system with 3 kw on-grid inverter/);
   assert.match(html, /solar roof top high rise structures/);
   assert.match(html, /Terms &amp; Condition:/);
   assert.match(html, /The cost includes design, supply, installing and commissioning of the system\./);
@@ -125,6 +125,13 @@ test('html: the overview, terms, payment terms and bank footer are present', () 
   assert.match(html, /Acceptance/);
   assert.match(html, /Client Name:/);
   assert.match(html, /Signature:/);
+});
+
+test('html: a hybrid sheet prints "hybrid" in the overview, never "on-grid"', () => {
+  const html = buildQuotationHTML(buildFixtureQuotation({ systemType: 'hybrid' }));
+
+  assert.match(html, /3 kw hybrid inverter/);
+  assert.doesNotMatch(html, /on-grid inverter/);
 });
 
 test('html: a non-GST quotation drops the "Including GST" label', () => {

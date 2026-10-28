@@ -1,6 +1,7 @@
 // src/validations/quotation.validation.js
 import Joi from 'joi';
 import { MAX_QTY_LENGTH, QTY_EXPRESSION_PATTERN, normaliseQty } from '../utils/quotationQuantity.js';
+import { SYSTEM_TYPES } from '../data/quotationTypes.js';
 
 const objectId = Joi.string().hex().length(24);
 
@@ -11,6 +12,10 @@ const unit = Joi.string()
   .valid('nos', 'mtr', 'kg', 'lot', 'pair', 'bag', 'roll', 'box', 'kwp', 'set', 'job');
 
 const structureType = Joi.string().valid('high_rise', 'tin_shed', 'rcc_rooftop', 'ground_mount');
+// Inverter kind printed inside the system overview sentence. Without this field
+// in the schema the form's dropdown value is silently stripped before the
+// service ever sees it, and every sheet prints "on-grid".
+const systemType = Joi.string().valid(...SYSTEM_TYPES);
 const quotationType = Joi.string().valid('consumer', 'partner');
 const quotationStatus = Joi.string().valid('draft', 'sent', 'accepted', 'rejected', 'expired', 'converted');
 const financialYear = Joi.string().pattern(/^\d{4}-\d{2}(\d{2})?$/);
@@ -102,6 +107,7 @@ const quotationBodyFields = {
   panelBrand: Joi.string().trim().max(120).allow(''),
   inverterCapacityKW: Joi.number().min(0.1).max(100).allow(null),
   inverterBrand: Joi.string().trim().max(120).allow(''),
+  systemType,
   structureType,
   systemOverview: Joi.string().trim().max(600).allow(''),
 
