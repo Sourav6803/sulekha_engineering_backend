@@ -981,6 +981,7 @@ class ApplicationService {
       fileSize: stored.bytes,
       mimeType: file.mimetype,
       extras: {
+        accountHolderName: body.accountHolderName || previousExtras.accountHolderName || undefined,
         accountNumber: body.accountNumber || previousExtras.accountNumber || undefined,
         ifsc: body.ifsc || previousExtras.ifsc || undefined,
         branchName: body.branchName || previousExtras.branchName || undefined,

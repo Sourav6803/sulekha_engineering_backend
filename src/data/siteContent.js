@@ -75,95 +75,424 @@ export const brandSlugOf = (name) => {
  */
 export const SOLAR_MATERIALS = [
   {
-    group: 'Generation',
+    group: 'SPV module',
     items: [
       {
-        name: 'Solar modules',
-        role: 'Turn sunlight into DC power.',
-        note: 'DCR or non-DCR, mono PERC or TOPCon, chosen for the roof and the subsidy route.',
-      },
-      {
-        name: 'Grid-tied inverter',
-        role: 'Converts DC to the AC your appliances use.',
-        note: 'String inverter sized to the array, with monitoring.',
+        name: 'Adani bificial pannel-DCR',
+        spec: '540 Wp',
+        quantity: 'nos',
+        note: '',
       },
     ],
   },
   {
-    group: 'Mounting',
+    group: 'Inverter',
     items: [
       {
-        name: 'GI mounting structure',
-        role: 'Holds the panels at the right tilt through wind and rain.',
-        note: 'Galvanised iron; elevated or tin-shed variants depending on the roof.',
-      },
-      {
-        name: 'Fasteners and clamps',
-        role: 'Keeps the array fixed to the structure.',
-        note: 'Stainless fasteners at the roof penetrations.',
+        name: 'SOLAR STRING INVERTERS (DEYE)',
+        spec: 'PVB Link 3.3 kWp - 1 ph',
+        quantity: 'nos',
+        note: '',
       },
     ],
   },
   {
-    group: 'Protection',
+    group: 'RCC structure (man-height)',
     items: [
       {
-        name: 'ACDB and DCDB',
-        role: 'Isolates and protects each side of the system.',
-        note: 'With MCBs and surge protection.',
+        name: 'LEG (FRONT)-80CS40X15X2',
+        spec: '2060 mm',
+        quantity: 'nos',
+        note: 'Modification Required',
       },
       {
-        name: 'Earthing kit',
-        role: 'Gives fault current a safe path to earth.',
-        note: 'Three pits: body, DC and lightning arrester.',
+        name: 'LEG (BACK)-80CS40X15X2',
+        spec: '2704 mm',
+        quantity: 'nos',
+        note: 'Modification Required',
       },
       {
-        name: 'Lightning arrester',
-        role: 'Diverts a strike away from the array.',
-        note: 'Recommended on open and elevated roofs.',
+        name: 'RAFTER-60CS40X15X2',
+        spec: '4100 mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'FRONT BRACING -ISA50X50X5',
+        spec: '1330 mm',
+        quantity: 'nos',
+        note: 'Modification Required',
+      },
+      {
+        name: 'BACK BRACING -ISA50X50X5',
+        spec: '1297 mm',
+        quantity: 'nos',
+        note: 'Modification Required',
+      },
+      {
+        name: 'Purlin [SQ. TUBE]',
+        spec: '3600 mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'Nut-Bolt-Double Washer',
+        spec: 'M10X25',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'Star Nut Bolt Washer',
+        spec: 'M10X100',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'U CLAMP',
+        spec: 'M8',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'Mid Clamp [75 LONG]',
+        spec: '25 mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'End Clamp[75 LONG]',
+        spec: '30 mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'NUT PLATE',
+        spec: '30 mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'DR. FIXIT',
+        spec: '200 ml',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'GROUTED CHEMICAL',
+        spec: 'Not specified',
+        quantity: 'nos',
+        note: '',
       },
     ],
   },
   {
-    group: 'Wiring',
+    group: 'DC side',
     items: [
       {
-        name: 'DC and AC cable',
-        role: 'Carries power from the roof to the meter.',
-        note: 'UV-rated DC cable, sized for voltage drop.',
+        name: 'DCDB',
+        spec: '1 in 1 out (600V SPD)',
+        quantity: 'nos',
+        note: '',
       },
       {
-        name: 'MC4 connectors',
-        role: 'Joins panel strings without exposing conductors.',
-        note: 'Matched pairs, crimped rather than taped.',
+        name: 'DC CABLE',
+        spec: '4 Sq mm 1 Core Type-1',
+        quantity: 'mtr',
+        note: '',
       },
       {
-        name: 'Cable tray and conduit',
-        role: 'Keeps the run neat and out of the sun.',
-        note: 'Especially where the roof is shared.',
+        name: 'MC4 CONNECTOR',
+        spec: '(M+F)',
+        quantity: 'pair',
+        note: '',
+      },
+      {
+        name: 'RING LUG',
+        spec: '4 - 6 mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'PIN LUG',
+        spec: '4 - 6 mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'MMS PVC PIPE',
+        spec: '25 mm 3 mtr',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'CHINA SHADDLE',
+        spec: '25mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'PVC TEE',
+        spec: '25mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'PVC ELBOW',
+        spec: '25mm',
+        quantity: 'nos',
+        note: '',
       },
     ],
   },
   {
-    group: 'Metering',
+    group: 'AC side',
     items: [
       {
-        name: 'Net meter',
-        role: 'Credits the units you export to the grid.',
-        note: 'Installed by the discom after inspection; the subsidy is released after this.',
+        name: 'ACDB',
+        spec: '1 phase (16 amp)',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'AC CABLE',
+        spec: '4 sq mm 2 core ALU armoured',
+        quantity: 'mtr',
+        note: '',
+      },
+      {
+        name: 'CHINA SHADDLE',
+        spec: '14 mm',
+        quantity: 'packet',
+        note: '',
+      },
+      {
+        name: 'RING LUG',
+        spec: '10mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'PIN LUG',
+        spec: '10 mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'BUSBAR (1PH / 3PH) WITH BOX',
+        spec: '1ph',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'PVC CABLE TRAY',
+        spec: '45 x 45',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'MCB',
+        spec: '32 amp 2 Pole',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'MCB ENCLOSER',
+        spec: 'PVC',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'AC CABLE',
+        spec: '4 SQ MM AC CABLE 2 CORE Cu',
+        quantity: 'mtr',
+        note: '',
+      },
+      {
+        name: 'LA',
+        spec: '1 mtr coper',
+        quantity: 'nos',
+        note: '',
+      },
+    ],
+  },
+  {
+    group: 'Earthing — part 1',
+    items: [
+      {
+        name: 'MS Angke for Extension [ISA25x25x5]',
+        spec: 'ISA 25x25x5',
+        quantity: 'mtr',
+        note: 'LA Extension',
+      },
+      {
+        name: 'Insulated Pipe (FRP Material)',
+        spec: '1/2 inch Dia FRP material',
+        quantity: 'mm',
+        note: '',
+      },
+      {
+        name: 'Nut Bolt Washer (M6X40)',
+        spec: 'M6x40mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'Self thread screw',
+        spec: '2 inch',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'LA INSULATOR',
+        spec: 'Big',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'EARTHING CABLE',
+        spec: '6 Sq mm Cu 1 core',
+        quantity: 'mtr',
+        note: '',
+      },
+      {
+        name: 'EARTHING CABLE',
+        spec: '16 Sq mm Cu 1 core',
+        quantity: 'mtr',
+        note: '',
+      },
+      {
+        name: 'EARTHING ROD',
+        spec: 'CU bounded 2 mtr 16 mm',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'EARTHING PIT COVER',
+        spec: 'PVC Small',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'EARTHING BUS Bar',
+        spec: '4 hole',
+        quantity: 'nos',
+        note: '',
+      },
+    ],
+  },
+  {
+    group: 'Earthing — part 2',
+    items: [
+      {
+        name: 'GI STRIP',
+        spec: '19x3',
+        quantity: 'kg',
+        note: '',
+      },
+      {
+        name: 'PVC INSULATOR',
+        spec: 'Flat',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'BUSBAR NUT BOLT WASHER',
+        spec: 'SS M8 x 30',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'GI STRIP JOINT NUT BOLT WASHER',
+        spec: 'SS M6 x 25',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'BFC',
+        spec: '25 kg',
+        quantity: 'bag',
+        note: '',
+      },
+    ],
+  },
+  {
+    group: 'Miscellaneous',
+    items: [
+      {
+        name: 'CABLE TIE',
+        spec: 'PVC 200mm uv protected',
+        quantity: 'packet',
+        note: '',
+      },
+      {
+        name: 'SCREW',
+        spec: 'SS 8 x 35',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'Cleaning Brush',
+        spec: '6 Mtr.',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'Zink Spray',
+        spec: 'Not specified',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'PVC TAPE - (R,G,B)',
+        spec: 'R 1 G 1 B 1',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'WOODEN GUJI',
+        spec: 'WOODEN',
+        quantity: 'packet',
+        note: '',
+      },
+    ],
+  },
+  {
+    group: 'Sticker & labelling',
+    items: [
+      {
+        name: 'SLD STICKER',
+        spec: 'Not specified',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'SULEKHA LOGO STICKER',
+        spec: 'Not specified',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'EARTHING STICKER',
+        spec: 'Not specified',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'PVC casing pin',
+        spec: 'Not specified',
+        quantity: 'nos',
+        note: '',
+      },
+      {
+        name: 'DANGER STICKER',
+        spec: 'Not specified',
+        quantity: 'nos',
+        note: '',
       },
     ],
   },
 ];
 
-// ---------------------------------------------------------------------------
-// How an installation actually runs
-// ---------------------------------------------------------------------------
-
-/**
- * Written as the customer experiences it, not as an internal checklist — this is
- * the "how do you actually do it" section on the home page.
- */
 export const INSTALLATION_STEPS = [
   {
     step: 1,

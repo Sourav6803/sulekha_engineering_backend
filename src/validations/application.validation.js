@@ -200,6 +200,7 @@ export const verifyElectricBillSchema = Joi.object({
 
 export const addDocumentSchema = Joi.object({
   kind: Joi.string().valid(...DOCUMENT_KINDS).required(),
+  accountHolderName: Joi.string().trim().max(150).allow('', null),
   accountNumber: Joi.string().trim().max(40).allow('', null),
   ifsc: Joi.string()
     .trim()

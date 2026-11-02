@@ -55,6 +55,7 @@ const ApplicationDocumentSchema = new Schema(
      * only the bank passbook / cheque (account number, IFSC, branch, type).
      */
     extras: {
+      accountHolderName: { type: String, trim: true },
       accountNumber: { type: String, trim: true },
       ifsc: { type: String, trim: true, uppercase: true },
       branchName: { type: String, trim: true },

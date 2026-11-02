@@ -101,7 +101,7 @@ export const CHECKLIST_DOCUMENTS = [
     hint: 'Account number, IFSC and branch name must be clearly visible.',
     hintBn: 'Account No, IFSC, Branch Name স্পষ্ট হতে হবে',
     required: true,
-    extras: ['accountNumber', 'ifsc', 'branchName', 'accountType'],
+    extras: ['accountHolderName', 'accountNumber', 'ifsc', 'branchName', 'accountType'],
   },
   /*
    * The office's paper trail for the scheme.
