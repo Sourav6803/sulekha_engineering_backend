@@ -1,6 +1,6 @@
 // src/services/site.service.js
 import { CompanyProfile } from '../models/index.js';
-import { brandSlugOf, buildSavingsTable, panelBenefit, SAVINGS_CONFIG, SITE_FAQS, SOLAR_BRANDS, SOLAR_MATERIALS, INSTALLATION_STEPS } from '../data/siteContent.js';
+import { brandSlugOf, buildCostTable, buildSavingsTable, panelBenefit, COST_CONFIG, SAVINGS_CONFIG, SITE_FAQS, SOLAR_BRANDS, SOLAR_MATERIALS, INSTALLATION_STEPS } from '../data/siteContent.js';
 import * as bannerService from './banner.service.js';
 import * as showcaseService from './showcase.service.js';
 
@@ -85,6 +85,14 @@ export const getHome = async () => {
       panel: panelBenefit(),
       subsidy: SAVINGS_CONFIG.subsidy,
       disclaimer: SAVINGS_CONFIG.disclaimer,
+    },
+
+    /* What it costs, next to what it saves — the two questions a visitor asks. */
+    cost: {
+      rows: buildCostTable(),
+      finance: COST_CONFIG.finance,
+      note: COST_CONFIG.note,
+      financeNote: COST_CONFIG.financeNote,
     },
 
     faqs: SITE_FAQS,

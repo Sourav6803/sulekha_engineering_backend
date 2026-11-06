@@ -652,6 +652,53 @@ export const buildSavingsTable = () => {
   });
 };
 
+/**
+ * What a system costs, and what is left to pay after the subsidy.
+ *
+ * These are the office's own quoted ranges for a standard residential rooftop —
+ * DCR module, string inverter, GI structure, protection, wiring and net metering
+ * included. They are the same figures printed on the shop's own banner, so the
+ * website and the paper cannot quote two different prices.
+ *
+ * The subsidy is deliberately *not* restated here: `buildCostTable` reads the slab
+ * from `SAVINGS_CONFIG`, so a change in the scheme moves the calculator and this
+ * table together instead of leaving one of them stale.
+ */
+export const COST_CONFIG = {
+  rows: [
+    { sizeKW: 1, priceFrom: 80000, priceTo: 85000 },
+    { sizeKW: 2, priceFrom: 150000, priceTo: 155000 },
+    { sizeKW: 3, priceFrom: 205000, priceTo: 210000 },
+  ],
+
+  /**
+   * The payment split the office actually offers: 10% at booking, the rest as a
+   * bank loan. No tenure is published because it depends on the lender — an EMI
+   * figure invented here would be a promise the office cannot keep.
+   */
+  finance: {
+    downPaymentPercent: 10,
+    loanPercent: 90,
+    interestRate: 5.75,
+    collateralFree: true,
+  },
+
+  note: 'For a standard residential rooftop: DCR module, string inverter, GI structure, protection, wiring and net metering. A 5 kW or larger system, an elevated or tin-shed roof, or a long cable run is priced on the survey.',
+  financeNote: 'Bank loan on the balance, collateral-free, at the rate above. The paperwork is handled by us.',
+};
+
+/** The cost table, with the subsidy and the net figure derived rather than typed in. */
+export const buildCostTable = () =>
+  COST_CONFIG.rows.map((row) => {
+    const subsidy = subsidyFor(row.sizeKW);
+    return {
+      ...row,
+      subsidy,
+      netFrom: Math.max(row.priceFrom - subsidy, 0),
+      netTo: Math.max(row.priceTo - subsidy, 0),
+    };
+  });
+
 /** What one module contributes — the "benefit of a single panel" line. */
 export const panelBenefit = () => ({
   wp: SAVINGS_CONFIG.panelWp,
